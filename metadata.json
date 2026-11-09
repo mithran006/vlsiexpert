@@ -1,0 +1,6 @@
+{
+  "name": "Silicon Arena",
+  "description": "PSNACET VLSI DEPARTMENT - Silicon Arena. VLSI and Digital Design Learning Platform with interactive waveform simulation and practice problems across Verilog, SystemVerilog, VHDL, FPGA, Linux, UVM, and DFT.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
