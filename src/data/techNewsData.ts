@@ -1,4 +1,4 @@
-export type TechNewsCategory = 'all' | 'vlsi' | 'embedded' | 'robotics' | 'semiconductor' | 'ai_creation' | 'breaking' | 'new_tech' | 'new_launch';
+export type TechNewsCategory = 'all' | 'ai_companies' | 'vlsi' | 'embedded' | 'robotics' | 'semiconductor' | 'ai_creation' | 'breaking' | 'new_tech' | 'new_launch';
 export type NewsDayFilter = 'all' | 'today' | 'yesterday' | 'two_days_ago';
 
 export interface TechNewsItem {
@@ -27,7 +27,8 @@ export interface TechNewsItem {
 }
 
 export const TECH_NEWS_CATEGORIES = [
-  { id: 'all', label: 'All Live Tech News', icon: 'Sparkles', desc: 'All real-time VLSI, embedded systems, robotics, semiconductor & AI hardware news' },
+  { id: 'all', label: 'All Live Tech News', icon: 'Sparkles', desc: 'All real-time VLSI, embedded systems, robotics, semiconductor & AI company news' },
+  { id: 'ai_companies', label: '🤖 Frontier AI Companies', icon: 'Sparkles', desc: 'Real-time breakthroughs from OpenAI, Google DeepMind, Anthropic, NVIDIA, Meta AI, xAI, Microsoft, Mistral, DeepSeek & Cerebras' },
   { id: 'vlsi', label: '🔬 VLSI Design & EDA', icon: 'Cpu', desc: 'ASIC RTL, Synopsys, Cadence, physical design, tape-outs & verification' },
   { id: 'embedded', label: '⚡ Embedded Systems & MCUs', icon: 'Zap', desc: 'STM32, ESP32, ARM Cortex, FreeRTOS, Zephyr, firmware & edge microcontrollers' },
   { id: 'robotics', label: '🤖 Robotics & Autonomous', icon: 'Brain', desc: 'Humanoid robots, Boston Dynamics, ROS2, Unitree, spatial vision & actuators' },
@@ -38,6 +39,20 @@ export const TECH_NEWS_CATEGORIES = [
 
 export const TECH_COMPANIES = [
   'All Companies',
+  'OpenAI',
+  'Google DeepMind',
+  'Anthropic',
+  'NVIDIA',
+  'Meta AI',
+  'Microsoft AI',
+  'xAI',
+  'Mistral AI',
+  'DeepSeek',
+  'Cerebras',
+  'Groq',
+  'AMD AI',
+  'Perplexity AI',
+  'Cohere',
   'Synopsys',
   'Cadence',
   'Siemens EDA',
@@ -49,17 +64,9 @@ export const TECH_COMPANIES = [
   'Figure AI',
   'Open Robotics (ROS2)',
   'ARM',
-  'DeepSeek',
-  'Cerebras',
-  'Groq',
-  'OpenAI',
-  'NVIDIA',
   'TSMC',
   'Intel',
-  'AMD',
   'Apple',
-  'Google Cloud',
-  'Meta',
   'ASML',
   'Qualcomm',
   'Broadcom',
@@ -133,6 +140,192 @@ export const TIMELINE_FILTERS = getDynamicTimelineFilters();
 
 // BATCH A (Active Day 1 Stories in Cycle 0 / shifts in next 24h)
 const COHORT_BATCH_A: Omit<TechNewsItem, 'dayGroup' | 'date' | 'relativeTime' | 'timestamp'>[] = [
+  {
+    id: 'news-live-openai-o3',
+    title: 'OpenAI Releases o3 Frontier Reasoning Model & Operator Autonomous Agent System',
+    subtitle: 'Reinforcement Learning with Long Chain-of-Thought Achieves 99.8% on ARC-AGI and Full Multi-Step Hardware Tool Execution',
+    category: 'ai_companies',
+    company: 'OpenAI',
+    timeString: '08:30 UTC',
+    readTime: '5 min read',
+    breaking: true,
+    featured: true,
+    summary: 'OpenAI has officially launched its next-generation frontier reasoning model, o3, alongside Operator, an autonomous browser and system agent. Trained with test-time compute scaling and deliberate tree-search reflection, o3 solves complex semiconductor layout routing, synthesizable Verilog code generation, and competitive algorithmic challenges with superhuman fidelity.',
+    keyHighlights: [
+      'Achieves 99.8% on ARC-AGI benchmark and over 95% on frontier mathematical and EDA competitive benchmarks.',
+      'Test-time compute scaling dynamically adjusts reasoning depth based on problem complexity, spending minutes on NP-hard circuit challenges.',
+      'Operator autonomous agent executes multi-step EDA terminal workflows, GUI layout software, and waveform debugging natively.',
+      'Optimized for custom silicon clusters with dynamic speculative decoding, reducing inference latency by 4.2x.'
+    ],
+    technicalDeepDive: `OpenAI o3 employs an advanced self-correction reinforcement learning mechanism during the pre-token generation phase. Unlike autoregressive generation that outputs tokens immediately, o3 allocates hidden computational passes to evaluate multiple candidate graph and code solutions before emitting final verified text.
+    
+In digital hardware design, o3 can autonomously ingest a complex AMBA AXI4 protocol specification, formulate architectural assertions, generate synthesizable SystemVerilog, and verify the resulting testbench in an iterative closed loop.`,
+    specSheet: [
+      { label: 'Reasoning Paradigm', value: 'Test-Time Compute Scaling & Tree Search' },
+      { label: 'ARC-AGI Benchmark', value: '99.8% Accuracy (State-of-the-Art)' },
+      { label: 'Agent Integration', value: 'Operator System & Browser GUI Automation' },
+      { label: 'Target Workloads', value: 'Hardware EDA, Logic Synthesis, Theorem Proving' }
+    ],
+    industryImpact: 'Shifts frontier AI from passive chatbots to active autonomous engineering agents capable of end-to-end silicon design and automated timing closure.',
+    tags: ['OpenAI', 'o3', 'Operator', 'Frontier AI', 'Reasoning', 'Autonomous Agents'],
+    source: 'OpenAI Research & TechCrunch Wire',
+    badgeColor: 'from-emerald-600 to-teal-700'
+  },
+  {
+    id: 'news-live-deepmind-gemini',
+    title: 'Google DeepMind Unveils Gemini 2.5 Flash Thinking & AlphaFold 3 Biomolecular Silicon Engines',
+    subtitle: 'Natively Multimodal Reasoning Powered by Google TPU v6 Trillium Optical Circuit-Switched Datacenters',
+    category: 'ai_companies',
+    company: 'Google DeepMind',
+    timeString: '08:15 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    featured: true,
+    summary: 'Google DeepMind has deployed Gemini 2.5 Flash Thinking and opened weights for AlphaFold 3. Running across Google Cloud TPU v6 Trillium pods, Gemini 2.5 combines real-time streaming audio, video, and code analysis with deep chain-of-thought verification, achieving sub-second reasoning latency on complex semiconductor schematics.',
+    keyHighlights: [
+      'Gemini 2.5 Flash Thinking provides transparent chain-of-thought verification directly in developer APIs with zero output lag.',
+      'AlphaFold 3 accurately predicts structures of DNA, RNA, ligands, and post-translational protein complexes for atomic-scale drug discovery.',
+      'Built upon Google Cloud TPU v6 Trillium chips delivering 4.7x higher peak compute per chip over TPU v5e.',
+      'Optical Circuit Switching (OCS) dynamically reconfigures 3D torus interconnect topologies in under 10 milliseconds.'
+    ],
+    technicalDeepDive: `Google DeepMind's Gemini 2.5 Flash Thinking is architected from the ground up for native multimodality. Instead of stitching separate text, audio, and visual decoders, all modality embeddings share a unified continuous latent space.
+    
+Google's TPU v6 Trillium silicon incorporates Matrix Multiply Units (MXUs) with native sparse INT4/FP8 compute pipelines and 32GB of High Bandwidth Memory (HBM3), delivering over 800 TFLOPS of peak BF16 arithmetic per accelerator.`,
+    specSheet: [
+      { label: 'Accelerator Pod', value: 'Google TPU v6 Trillium (256-chip OCS Pods)' },
+      { label: 'Context Length', value: '2,000,000 Tokens Native Multimodal' },
+      { label: 'Biomolecular Suite', value: 'AlphaFold 3 Molecular Complex Engine' },
+      { label: 'Memory Bandwidth', value: '1.6 TB/s HBM3 per TPU Accelerator' }
+    ],
+    industryImpact: 'Democratizes frontier multimodal intelligence and molecular nanotechnology while cementing Google TPU silicon as a prime alternative to GPU clusters.',
+    tags: ['Google DeepMind', 'Gemini 2.5', 'TPU Trillium', 'AlphaFold 3', 'Multimodal', 'Frontier AI'],
+    source: 'Google DeepMind Blog & Nature Wire',
+    badgeColor: 'from-blue-600 to-cyan-700'
+  },
+  {
+    id: 'news-live-anthropic-claude',
+    title: 'Anthropic Deploys Claude 3.7 Sonnet Hybrid Reasoning & Real-Time Computer Use for Hardware EDA',
+    subtitle: 'First Frontier Model to Interleave Instant Token Generation with Extended Chain-of-Thought Scratchpad',
+    category: 'ai_companies',
+    company: 'Anthropic',
+    timeString: '08:00 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    featured: true,
+    summary: 'Anthropic has released Claude 3.7 Sonnet, introducing a breakthrough hybrid reasoning architecture. Developers can dynamically dial reasoning compute budgets from 0 tokens (instant response) up to 128k thinking tokens for deep mathematical derivations, formal EDA verification, and automated GUI tool operation.',
+    keyHighlights: [
+      'Hybrid reasoning allows users to toggle between instant low-latency code generation and deep extended reflection.',
+      'Upgraded Computer Use API enables Claude to operate Linux shells, EDA IDEs, and simulation viewers directly.',
+      'Demonstrates superior accuracy on IEEE Verilog syntax standards, SystemVerilog UVM testbenches, and DFT design rules.',
+      'Rigorous Constitutional AI alignment prevents harmful code vulnerabilities and intellectual property contamination.'
+    ],
+    technicalDeepDive: `Claude 3.7 Sonnet's hybrid mode operates via a dual-phase latent router. When posed an engineering question, an internal gating mechanism assesses problem ambiguity and algorithmic depth.
+    
+If deep analysis is required, Claude generates an invisible structured chain-of-thought scratchpad where it writes intermediate state transitions, simulates RTL edge cases, and verifies mathematical equations before outputting the final user-facing response.`,
+    specSheet: [
+      { label: 'Model Version', value: 'Claude 3.7 Sonnet (Hybrid Reasoning)' },
+      { label: 'Extended Thinking', value: 'Up to 128,000 Reasoning Scratchpad Tokens' },
+      { label: 'Tool Mastery', value: 'Computer Use API (GUI + Bash + Text Editor)' },
+      { label: 'Coding Benchmark', value: '70.3% SWE-bench Verified (Highest Recorded)' }
+    ],
+    industryImpact: 'Becomes the gold standard for software and hardware engineering copilots, dramatically accelerating digital chip design and formal verification pipelines.',
+    tags: ['Anthropic', 'Claude 3.7 Sonnet', 'Hybrid Reasoning', 'Computer Use', 'EDA Copilot'],
+    source: 'Anthropic Research & VentureBeat',
+    badgeColor: 'from-amber-600 to-orange-700'
+  },
+  {
+    id: 'news-live-nvidia-blackwell',
+    title: 'NVIDIA Blackwell GB200 NVL72 Ramps Mass Production: 72-GPU Liquid-Cooled Exascale Rack',
+    subtitle: '1.4 Exaflops of FP4 Inference and 30 TB/s All-to-All NVLink Switch Fabric Shipping to Tier-1 Datacenters',
+    category: 'ai_companies',
+    company: 'NVIDIA',
+    timeString: '07:55 UTC',
+    readTime: '5 min read',
+    breaking: true,
+    featured: true,
+    summary: 'NVIDIA has reached volume production for its flagship GB200 NVL72 Blackwell racks. Integrating 36 Grace CPUs and 72 Blackwell GPUs with 100% direct-to-chip liquid cooling, the unified cluster behaves as a single giant GPU with 13.5TB of ultra-fast HBM3e memory.',
+    keyHighlights: [
+      '72 Blackwell GPUs interconnected via 5th-Gen NVLink Spine delivering 1.8 TB/s bidirectional bandwidth per GPU.',
+      '1.4 Exaflops of FP4 AI inference throughput and 720 PFLOPS of FP8 training compute in a single standard 42U rack.',
+      'Direct-to-chip liquid cooling with copper cold plates reduces datacenter Power Usage Effectiveness (PUE) to 1.15.',
+      'De-facto silicon backbone for training trillions-of-parameters frontier reasoning models at OpenAI, Microsoft, and xAI.'
+    ],
+    technicalDeepDive: `The Blackwell architecture unites two reticle-limited TSMC 4NP silicon dies using a proprietary 10 TB/s NV-High Bandwidth Interface (NV-HBI), acting as a single cohesive monolithic GPU.
+    
+The NVL72 rack incorporates 9 NVLink Switch trays utilizing custom 50.4 Tb/s ASIC switches and over 2 miles of internal copper cabling, eliminating costly optical transceivers for intra-rack GPU-to-GPU communications.`,
+    specSheet: [
+      { label: 'Total AI Compute', value: '1,440 PFLOPS (1.44 Exaflops) FP4 Inference' },
+      { label: 'Memory Capacity', value: '13.5 TB HBM3e @ 576 TB/s Aggregate' },
+      { label: 'Interconnect Fabric', value: 'NVLink 5 @ 1,800 GB/s Per GPU' },
+      { label: 'Cooling Technology', value: 'Direct-to-Chip 100% Liquid (120 kW / Rack)' }
+    ],
+    industryImpact: 'Sets an unmatched benchmark for hyperscale datacenter AI training and inference, locking in NVIDIA’s technological lead in generative AI infrastructure.',
+    tags: ['NVIDIA', 'Blackwell', 'GB200 NVL72', 'Liquid Cooling', 'NVLink 5', 'HBM3e'],
+    source: 'NVIDIA GTC Wire & Tom’s Hardware',
+    badgeColor: 'from-emerald-500 to-green-700'
+  },
+  {
+    id: 'news-live-xai-grok3',
+    title: 'xAI Activates 200,000-GPU Colossus Supercluster Powering Grok 3 Frontier Real-Time Reasoning',
+    subtitle: 'Memphis Mega-Datacenter Deploys Supermicro Liquid-Cooled Racks Over RDMA RoCEv2 Network Fabric',
+    category: 'ai_companies',
+    company: 'xAI',
+    timeString: '07:50 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    featured: true,
+    summary: 'xAI has brought its expanded 200,000-GPU Colossus supercluster fully online in Memphis, Tennessee, training the upcoming Grok 3 reasoning model. Constructed and connected in record time, Colossus represents the world’s largest unified AI training cluster, utilizing liquid-cooled servers and multi-gigawatt power substations.',
+    keyHighlights: [
+      '200,000 NVIDIA H100 and H200 GPUs interconnected in a single flat non-blocking network fabric.',
+      'Custom RDMA over Converged Ethernet (RoCEv2) network architecture with real-time congestion telemetry.',
+      'Grok 3 incorporates real-time world events, code execution environments, and deep mathematical reasoning engines.',
+      'Massive megawatt battery storage energy packs ensure continuous cluster uptime during grid peak loads.'
+    ],
+    technicalDeepDive: `Maintaining gradient synchronization across 200,000 accelerators without catastrophic straggler delays is one of the grand challenges of distributed systems engineering.
+    
+xAI engineered custom in-network telemetry algorithms that dynamically route around congested leaf-spine switches, achieving over 90% Model Flops Utilization (MFU) at unprecedented scale.`,
+    specSheet: [
+      { label: 'Cluster Size', value: '200,000 GPUs (Liquid Cooled H100/H200)' },
+      { label: 'Networking', value: '800G RDMA over Converged Ethernet (RoCEv2)' },
+      { label: 'Datacenter Location', value: 'Memphis, Tennessee (Colossus Facility)' },
+      { label: 'Target Model', value: 'Grok 3 Real-Time Reasoning & Multimodal AI' }
+    ],
+    industryImpact: 'Demonstrates unprecedented speed in physical datacenter deployment and intensifies the global competition for frontier model supremacy.',
+    tags: ['xAI', 'Colossus', 'Grok 3', '200k GPUs', 'RoCEv2', 'Supercomputer'],
+    source: 'xAI Technical Briefing & Reuters',
+    badgeColor: 'from-zinc-500 to-neutral-800'
+  },
+  {
+    id: 'news-live-meta-llama4',
+    title: 'Meta AI Releases Llama 4 Scout: Native Multimodal MoE Architecture with 2-Million Token Context',
+    subtitle: 'Open-Weights Milestone Trained on 100,000 Liquid-Cooled NVIDIA H100 Cluster Using PyTorch 2.5',
+    category: 'ai_companies',
+    company: 'Meta AI',
+    timeString: '07:48 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    featured: true,
+    summary: 'Meta AI has released Llama 4 Scout, the first model in its fourth-generation open foundation series. Featuring a Mixture-of-Experts (MoE) design with native visual and audio comprehension, Llama 4 Scout allows commercial enterprises and academic researchers to deploy state-of-the-art multimodal reasoning on private datacenter infrastructure.',
+    keyHighlights: [
+      'Mixture-of-Experts architecture activates only 42B out of 400B total parameters per token, maximizing throughput.',
+      'Native 2,000,000 token context window processes entire hardware codebases, test benches, and IEEE specification PDFs.',
+      'Trained on Meta’s custom-built 100k GPU datacenters running PyTorch 2.5 with FlashAttention-3 kernels.',
+      'Available under open commercial licensing for on-premise deployment, edge servers, and developer customization.'
+    ],
+    technicalDeepDive: `Llama 4 replaces late-stage cross-attention encoders with interleaved early-fusion multimodal transformers. Vision patches and audio spectrograms are tokenized directly into the core transformer layers, enabling simultaneous cross-modal attention.
+    
+Meta’s training pipeline utilizes Pipeline Parallelism (PP) overlapped with Megatron-style Tensor Parallelism (TP) to eliminate GPU memory fragmentation during long-context training runs.`,
+    specSheet: [
+      { label: 'Model Architecture', value: '400B Total MoE (42B Active Parameters)' },
+      { label: 'Context Horizon', value: '2,000,000 Tokens (2M Context Window)' },
+      { label: 'License Policy', value: 'Open Weights Commercial & Research Use' },
+      { label: 'Training Hardware', value: '100,000 Liquid-Cooled NVIDIA H100 Cluster' }
+    ],
+    industryImpact: 'Solidifies open-source AI as a formidable rival to proprietary API providers, empowering semiconductor firms to train custom in-house EDA copilots.',
+    tags: ['Meta AI', 'Llama 4', 'Open Weights', 'MoE', 'Multimodal', '2M Context'],
+    source: 'Meta AI Research & Hugging Face',
+    badgeColor: 'from-blue-500 to-indigo-600'
+  },
   {
     id: 'news-live-ai-1',
     title: 'DeepSeek-R1 & V3 Open-Source AI Reasoning Revolutionizes Silicon Compute Cluster Efficiency',
@@ -387,6 +580,92 @@ By integrating Tensix AI math engines directly on the coherent core mesh rather 
 
 // BATCH B (Active Day 2 Stories in Cycle 0)
 const COHORT_BATCH_B: Omit<TechNewsItem, 'dayGroup' | 'date' | 'relativeTime' | 'timestamp'>[] = [
+  {
+    id: 'news-live-microsoft-maia',
+    title: 'Microsoft AI Deploys Azure Maia 100 & Cobalt 100 Custom Silicon Across Global Datacenters',
+    subtitle: 'Custom TSMC 5nm AI Accelerator with 105 Billion Transistors and Custom Ethernet RDMA Protocols',
+    category: 'ai_companies',
+    company: 'Microsoft AI',
+    timeString: '16:00 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    summary: 'Microsoft AI has expanded volume deployment of its custom Azure Maia 100 AI accelerator and Cobalt 100 ARM CPU. Designed from the silicon layer up for GPT-4 and Copilot workloads, Maia 100 utilizes a custom liquid-cooled "Sidekick" rack architecture and custom Ethernet-based backend protocols.',
+    keyHighlights: [
+      '105 billion transistors fabricated on TSMC 5nm process with direct-to-chip liquid cooling.',
+      '64GB HBM2e memory delivering 1.8 TB/s bandwidth tailored for large-batch transformer inference.',
+      'Custom sub-8-bit data types (MXFP4 / MXFP6) maximize compute density without model degradation.',
+      'Custom Ethernet backend protocol achieves high all-reduce throughput without proprietary InfiniBand lock-in.'
+    ],
+    technicalDeepDive: `Microsoft Maia 100 utilizes the Open Compute Project (OCP) Microscaling (MX) standard. By grouping sub-byte floating point tensors with shared scale factors, Maia computes 8x more matrix operations per clock cycle compared to standard FP16 cores.`,
+    specSheet: [
+      { label: 'Transistor Count', value: '105 Billion Transistors (TSMC 5nm)' },
+      { label: 'Precision Format', value: 'Microscaling (MX) FP4 / FP6 / FP8' },
+      { label: 'Host CPU', value: '128-core Microsoft Azure Cobalt 100' },
+      { label: 'Cooling Enclosure', value: 'Custom Sidekick Direct-to-Chip Liquid' }
+    ],
+    industryImpact: 'Reduces Microsoft’s single-vendor dependence on external GPU suppliers and drives adoption of open Ethernet networking in hyperscale AI clouds.',
+    tags: ['Microsoft AI', 'Maia 100', 'Cobalt 100', 'Azure AI', 'Custom Silicon'],
+    source: 'Microsoft Azure Blog & SemiAnalysis',
+    badgeColor: 'from-blue-600 to-sky-700'
+  },
+  {
+    id: 'news-live-mistral-large2',
+    title: 'Mistral AI Launches Mistral Large 2 with 128k Context and Native Multi-Turn Code Reasoning',
+    subtitle: '123-Billion Parameter Foundation Model Demonstrates World-Class Synthesis Across 80+ Languages',
+    category: 'ai_companies',
+    company: 'Mistral AI',
+    timeString: '15:45 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    summary: 'Paris-based Mistral AI has unveiled Mistral Large 2, a 123B parameter dense foundation model rivaling top proprietary models. Featuring state-of-the-art multilingual comprehension, function calling, and structured JSON output, Mistral Large 2 is optimized for private European enterprise clouds.',
+    keyHighlights: [
+      '123 billion parameter dense transformer trained on diverse multilingual code repositories.',
+      'Native support for 80+ programming languages including Verilog, VHDL, C++, and Python.',
+      'Advanced function calling with guaranteed single-turn and multi-turn schema adherence.',
+      'Deployable on single 8x H100 node with native FP8 precision for cost-efficient enterprise execution.'
+    ],
+    technicalDeepDive: `Mistral Large 2 incorporates improved RoPE theta scaling (500,000) allowing flawless needle-in-a-haystack retrieval across its entire 128,000-token context window without position degradation.`,
+    specSheet: [
+      { label: 'Parameter Count', value: '123 Billion Dense Parameters' },
+      { label: 'Context Length', value: '128k Tokens (RoPE Theta 500k)' },
+      { label: 'Supported Syntax', value: '80+ Coding Languages (including HDLs)' },
+      { label: 'Deployment Spec', value: 'Single 8x H100 / A100 Node (FP8/FP16)' }
+    ],
+    industryImpact: 'Establishes Europe as a premier frontier AI powerhouse and provides an open, privacy-compliant alternative for enterprise hardware workflows.',
+    tags: ['Mistral AI', 'Mistral Large 2', 'Frontier AI', 'European AI', 'Code Generation'],
+    source: 'Mistral AI Research & TechCrunch',
+    badgeColor: 'from-orange-500 to-amber-700'
+  },
+  {
+    id: 'news-live-groq-lpu',
+    title: 'Groq LPU Inference Cluster Breaks 1,250 Tokens/sec for Frontier Reasoning Architectures',
+    subtitle: 'Deterministic Tensor Streaming Processor (TSP) Architecture Eliminates DRAM Memory Bandwidth Bottlenecks',
+    category: 'ai_companies',
+    company: 'Groq',
+    timeString: '15:35 UTC',
+    readTime: '4 min read',
+    breaking: true,
+    summary: 'Groq has demonstrated live inference clusters generating over 1,250 tokens per second on frontier reasoning models. Built upon its proprietary Language Processing Unit (LPU), the hardware eliminates traditional GPU high-bandwidth memory (HBM) latency by executing directly from on-chip SRAM with cycle-deterministic timing.',
+    keyHighlights: [
+      'LPU Tensor Streaming Processor delivers instantaneous sub-100ms time-to-first-token (TTFT).',
+      'Cycle-deterministic hardware compiler schedules every instruction at compile time, eliminating runtime schedulers.',
+      '230MB on-chip SRAM per chip connected via 80 TB/s on-die interconnect fabric.',
+      'Clustered across hundreds of LPUs via real-time optical chip-to-chip links without network packet drop.'
+    ],
+    technicalDeepDive: `Conventional GPUs suffer memory stalls because matrix weights must be continuously loaded from external HBM3 stacks over a high-capacitance interposer.
+    
+Groq\'s LPU integrates 230MB of ultra-fast static RAM (SRAM) directly adjacent to the arithmetic execution units. The software compiler plans the exact nanosecond cycle each tensor value moves across the chip, eliminating instruction decoders, caches, and branch predictors.`,
+    specSheet: [
+      { label: 'Throughput', value: '1,250+ Tokens / Second (Ultra-Low Latency)' },
+      { label: 'On-Chip Memory', value: '230 MB SRAM @ 80 TB/s Per LPU' },
+      { label: 'Execution Model', value: '100% Software-Scheduled Deterministic' },
+      { label: 'Fabric Technology', value: 'Chip-to-Chip Direct Interconnect (Zero Drop)' }
+    ],
+    industryImpact: 'Enables genuine conversational voice interfaces, real-time code synthesis, and millisecond autonomous agent loops.',
+    tags: ['Groq', 'LPU', 'Inference Speed', 'SRAM', 'Deterministic Compute', 'Frontier AI'],
+    source: 'Groq Technical Keynote & AnandTech',
+    badgeColor: 'from-red-600 to-orange-700'
+  },
   {
     id: 'news-live-ai-4',
     title: 'OpenAI & Broadcom Tape Out Custom 3nm AI Inference ASIC on TSMC Foundry Process',

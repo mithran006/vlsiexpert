@@ -913,7 +913,21 @@ export const simulatorEngine = {
         mismatches: mismatches.length > 0 ? mismatches : undefined
       });
 
-      samples.push({ cycle: c, signals: { ...cycleSignals } });
+      // Prepare clean canonical signals for waveform sample export (avoid duplicate aliases like 'out' alongside 'out[1:0]')
+      const sampleExportSignals: Record<string, string> = {};
+      const allCanonicalSigs = [...clockSigs, ...inputSigs, ...multiBitInputs, ...outputSigs];
+      if (allCanonicalSigs.length > 0) {
+        allCanonicalSigs.forEach(s => {
+          if (cycleSignals[s.name] !== undefined) {
+            sampleExportSignals[s.name] = cycleSignals[s.name];
+          } else if (cycleSignals[s.name.replace(/\[.*\]/, '')] !== undefined) {
+            sampleExportSignals[s.name] = cycleSignals[s.name.replace(/\[.*\]/, '')];
+          }
+        });
+      }
+      const exportedSignals = Object.keys(sampleExportSignals).length > 0 ? sampleExportSignals : { ...cycleSignals };
+
+      samples.push({ cycle: c, signals: exportedSignals });
       prevCycleSignals = { ...cycleSignals };
     }
 

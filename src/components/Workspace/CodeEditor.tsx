@@ -34,8 +34,8 @@ interface CodeEditorProps {
   hasStartedCoding?: boolean;
   onStartCoding?: () => void;
   onStartBlank?: () => void;
-  panelLayout?: 'default' | 'code-expanded' | 'vis-expanded';
-  onTogglePanelLayout?: (layout: 'default' | 'code-expanded' | 'vis-expanded') => void;
+  panelLayout?: 'default' | 'code-expanded' | 'vis-expanded' | 'vis-maximized';
+  onTogglePanelLayout?: (layout: 'default' | 'code-expanded' | 'vis-expanded' | 'vis-maximized') => void;
   activeEditorTab?: 'dut' | 'tb' | 'combined';
   onSelectEditorTab?: (tab: 'dut' | 'tb' | 'combined') => void;
   isOutputOpen?: boolean;

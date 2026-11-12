@@ -128,6 +128,7 @@ function checkBracketBalance(lines: string[], topic: string): SourceErrorInfo | 
   }
   const stack: BracketEntry[] = [];
   let inBlockComment = false;
+  let inTripleQuote: string | null = null; // Python """ or ''' multiline strings
 
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
@@ -138,8 +139,26 @@ function checkBracketBalance(lines: string[], topic: string): SourceErrorInfo | 
     for (let c = 0; c < raw.length; c++) {
       const ch = raw[c];
       const next = raw[c + 1] || '';
+      const next2 = raw[c + 2] || '';
 
-      // Block comment handling
+      // Python triple quote handling
+      if (isPython) {
+        if (!inString && !inBlockComment && (ch === '"' || ch === "'") && next === ch && next2 === ch) {
+          const quoteType = ch + ch + ch;
+          if (!inTripleQuote) {
+            inTripleQuote = quoteType;
+            c += 2;
+            continue;
+          } else if (inTripleQuote === quoteType) {
+            inTripleQuote = null;
+            c += 2;
+            continue;
+          }
+        }
+        if (inTripleQuote) continue;
+      }
+
+      // Block comment handling (C, C++, Verilog, SystemVerilog)
       if (!inBlockComment && !inString && ch === '/' && next === '*') {
         inBlockComment = true;
         c++;
@@ -154,13 +173,13 @@ function checkBracketBalance(lines: string[], topic: string): SourceErrorInfo | 
       }
 
       // Single line comments
-      if (!inString) {
+      if (!inString && !inTripleQuote) {
         if (ch === '/' && next === '/') break;
         if (ch === '-' && next === '-' && topic === 'vhdl') break;
         if (ch === '#' && (isPython || isBash)) break;
       }
 
-      // String literal handling
+      // String literal handling (single line)
       if (ch === '"' || ch === "'") {
         if (!inString) {
           inString = ch;
@@ -529,23 +548,91 @@ function checkCSyntax(lines: string[], fullCode: string): SourceErrorInfo | null
 
     // Check missing semicolon
     const codeNoComment = line.replace(/\/\/.*$/, '').trim();
-    const requiresSemi =
-      codeNoComment.length > 0 &&
-      !codeNoComment.endsWith(';') &&
-      !codeNoComment.endsWith('{') &&
-      !codeNoComment.endsWith('}') &&
-      !codeNoComment.endsWith(',') &&
-      !codeNoComment.endsWith(':') &&
-      !codeNoComment.startsWith('if') &&
-      !codeNoComment.startsWith('else') &&
-      !codeNoComment.startsWith('for') &&
-      !codeNoComment.startsWith('while') &&
-      !codeNoComment.startsWith('#') &&
-      !codeNoComment.includes('void ') &&
-      !codeNoComment.includes('int ') &&
-      !codeNoComment.endsWith(')');
+    if (!codeNoComment) continue;
 
-    if (requiresSemi && (codeNoComment.includes('=') || codeNoComment.startsWith('return') || codeNoComment.includes('++') || codeNoComment.includes('--'))) {
+    // Check if line continues on next line due to open brackets
+    let openCount = 0;
+    for (const c of codeNoComment) {
+      if (c === '(' || c === '[' || c === '{') openCount++;
+      else if (c === ')' || c === ']' || c === '}') openCount--;
+    }
+    if (openCount > 0) continue;
+
+    const endsWithContinuation =
+      codeNoComment.endsWith(';') ||
+      codeNoComment.endsWith('{') ||
+      codeNoComment.endsWith('}') ||
+      codeNoComment.endsWith(',') ||
+      codeNoComment.endsWith(':') ||
+      codeNoComment.endsWith('\\') ||
+      codeNoComment.endsWith('(') ||
+      codeNoComment.endsWith('[') ||
+      codeNoComment.endsWith('+') ||
+      codeNoComment.endsWith('-') ||
+      codeNoComment.endsWith('*') ||
+      codeNoComment.endsWith('/') ||
+      codeNoComment.endsWith('%') ||
+      codeNoComment.endsWith('&') ||
+      codeNoComment.endsWith('|') ||
+      codeNoComment.endsWith('^') ||
+      codeNoComment.endsWith('?') ||
+      codeNoComment.endsWith('=') ||
+      codeNoComment.endsWith('&&') ||
+      codeNoComment.endsWith('||');
+
+    const nextLine = lines[i + 1]?.trim().replace(/\/\/.*$/, '').trim() || '';
+    const nextContinues =
+      nextLine.startsWith('+') ||
+      nextLine.startsWith('-') ||
+      nextLine.startsWith('*') ||
+      nextLine.startsWith('/') ||
+      nextLine.startsWith('%') ||
+      nextLine.startsWith('&') ||
+      nextLine.startsWith('|') ||
+      nextLine.startsWith('^') ||
+      nextLine.startsWith('?') ||
+      nextLine.startsWith(':') ||
+      nextLine.startsWith(';') ||
+      nextLine.startsWith(',') ||
+      nextLine.startsWith('.') ||
+      nextLine.startsWith('->') ||
+      nextLine.startsWith(')') ||
+      nextLine.startsWith(']');
+
+    const isControlHeader =
+      codeNoComment.startsWith('if') ||
+      codeNoComment.startsWith('else') ||
+      codeNoComment.startsWith('for') ||
+      codeNoComment.startsWith('while') ||
+      codeNoComment.startsWith('switch') ||
+      codeNoComment.startsWith('case') ||
+      codeNoComment.startsWith('default') ||
+      codeNoComment.startsWith('#') ||
+      codeNoComment.startsWith('typedef');
+
+    const isFunctionSignature =
+      (codeNoComment.startsWith('void ') ||
+       codeNoComment.startsWith('int ') ||
+       codeNoComment.startsWith('char ') ||
+       codeNoComment.startsWith('float ') ||
+       codeNoComment.startsWith('double ') ||
+       codeNoComment.startsWith('uint') ||
+       codeNoComment.startsWith('bool ')) &&
+      codeNoComment.endsWith(')') &&
+      (nextLine.startsWith('{') || nextLine.length === 0);
+
+    const requiresSemi =
+      !endsWithContinuation &&
+      !nextContinues &&
+      !isControlHeader &&
+      !isFunctionSignature &&
+      (codeNoComment.includes('=') ||
+       codeNoComment.startsWith('return') ||
+       codeNoComment.includes('++') ||
+       codeNoComment.includes('--') ||
+       /^[a-zA-Z_][a-zA-Z0-9_]*\s*\(.*?\)$/.test(codeNoComment));
+
+    if (requiresSemi) {
       return {
         errorLine: lineNum,
         errorSnippet: line,
@@ -620,12 +707,10 @@ function checkPythonSyntax(lines: string[], fullCode: string, topic: string): So
   const typoMap: Record<string, string> = {
     'def_': 'def',
     'fuction': 'def',
-    'func': 'def',
     'whiel': 'while',
     'retrun': 'return',
     'eliff': 'elif',
     'improt': 'import',
-    'form': 'from',
     'clss': 'class'
   };
 
@@ -653,10 +738,38 @@ function checkPythonSyntax(lines: string[], fullCode: string, topic: string): So
     '.off_()': '.off()'
   };
 
+  let inMultilineTripleQuote: string | null = null;
+
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
-    const line = lines[i].trim();
+    const rawLine = lines[i];
+    const line = rawLine.trim();
 
+    // Check for triple quote transitions
+    let tempStr = rawLine;
+    let quoteIdx = 0;
+    while (quoteIdx < tempStr.length) {
+      if (!inMultilineTripleQuote) {
+        if (tempStr.substring(quoteIdx, quoteIdx + 3) === '"""') {
+          inMultilineTripleQuote = '"""';
+          quoteIdx += 3;
+          continue;
+        } else if (tempStr.substring(quoteIdx, quoteIdx + 3) === "'''") {
+          inMultilineTripleQuote = "'''";
+          quoteIdx += 3;
+          continue;
+        }
+      } else {
+        if (tempStr.substring(quoteIdx, quoteIdx + 3) === inMultilineTripleQuote) {
+          inMultilineTripleQuote = null;
+          quoteIdx += 3;
+          continue;
+        }
+      }
+      quoteIdx++;
+    }
+
+    if (inMultilineTripleQuote) continue;
     if (!line || line.startsWith('#')) continue;
 
     const firstWord = (line.split(/[\s(:=]/)[0] || '').toLowerCase();
@@ -702,25 +815,51 @@ function checkPythonSyntax(lines: string[], fullCode: string, topic: string): So
       }
     }
 
-    // Check missing colon on def, if, for, while, class, elif, else
+    // Check missing colon on def, if, for, while, class, elif, else, with, try, except, finally
     const colonKeywords = /^(def|if|for|while|class|elif|else|with|try|except|finally)\b/;
     if (colonKeywords.test(line)) {
-      const cleanLine = line.replace(/#.*$/, '').trim();
-      if (!cleanLine.endsWith(':')) {
+      // Find full header statement in case it spans multiple lines with brackets or backslashes
+      let headerText = line.replace(/#.*$/, '').trim();
+      let headerEndLine = lineNum;
+      let parenBalance = 0;
+      for (const ch of headerText) {
+        if (ch === '(' || ch === '[' || ch === '{') parenBalance++;
+        else if (ch === ')' || ch === ']' || ch === '}') parenBalance--;
+      }
+
+      while ((parenBalance > 0 || headerText.endsWith('\\')) && headerEndLine < lines.length) {
+        headerEndLine++;
+        const nextPart = lines[headerEndLine - 1].replace(/#.*$/, '').trim();
+        headerText = headerText.replace(/\\$/, '') + ' ' + nextPart;
+        for (const ch of nextPart) {
+          if (ch === '(' || ch === '[' || ch === '{') parenBalance++;
+          else if (ch === ')' || ch === ']' || ch === '}') parenBalance--;
+        }
+      }
+
+      const cleanHeader = headerText.trim();
+      if (!cleanHeader.endsWith(':')) {
         return {
-          errorLine: lineNum,
-          errorSnippet: line,
+          errorLine: headerEndLine,
+          errorSnippet: lines[headerEndLine - 1]?.trim() || line,
           errorType: 'syntax',
-          errorMessage: `Python Syntax Error on Line ${lineNum}: Missing colon ':' at end of header.`,
-          errorHint: `Add a colon ':' at the end of statement on Line ${lineNum}.`
+          errorMessage: `Python Syntax Error on Line ${headerEndLine}: Missing colon ':' at end of header.`,
+          errorHint: `Add a colon ':' at the end of statement on Line ${headerEndLine}.`
         };
       }
 
-      // Check assignment '=' in if/while header
-      if (/^(if|elif|while)\b/.test(cleanLine)) {
-        const condPart = cleanLine.replace(/^(if|elif|while)\s+/, '').replace(/:$/, '').trim();
-        // Match single '=' not preceded or followed by =, !, <, >
-        if (/(?<![=!<>])=(?![=])/.test(condPart)) {
+      // Check accidental assignment '=' instead of '==' in conditions
+      // Ignore keyword arguments inside call parens or walrus :=
+      if (/^(if|elif|while)\b/.test(cleanHeader)) {
+        // Strip out function calls and expressions in parens
+        let condWithoutParens = cleanHeader.replace(/^(if|elif|while)\s+/, '').replace(/:$/, '').trim();
+        // Remove innermost balanced parens iteratively to leave only top-level condition
+        let prev = '';
+        while (prev !== condWithoutParens) {
+          prev = condWithoutParens;
+          condWithoutParens = condWithoutParens.replace(/\([^()]*\)/g, '()');
+        }
+        if (/(?<![=!<>:])=(?![=])/.test(condWithoutParens)) {
           return {
             errorLine: lineNum,
             errorSnippet: line,

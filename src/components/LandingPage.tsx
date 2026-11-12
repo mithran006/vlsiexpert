@@ -21,20 +21,20 @@ interface LandingPageProps {
 }
 
 const MENTOR = {
-  name: 'DR MANIRAJ KUMAR P',
-  role: 'MENTOR & HOD OF EE-VLSI DESIGN & TECHNOLOGY',
-  dept: 'PSNACET VLSI DEPARTMENT',
-  desc: 'Mentor & Head of Department guiding semiconductor research, digital & analog VLSI architectures, and EDA simulation excellence.'
+  name: 'DR P MANIRAJ KUMAR',
+  designation: 'PROFESSOR & HEAD IC/ EE-VLSI DEPARTMENT',
+  dept: 'PSNACET',
+  desc: 'Guiding semiconductor research, digital & analog VLSI architectures, and EDA simulation excellence.'
 };
 
-const FOUNDERS = [
-  { name: 'DEEPAK KUMAR AP', role: 'FOUNDER', domain: 'VLSI Architecture & Platform Design' },
-  { name: 'MITRAN B', role: 'FOUNDER', domain: 'RTL Design & Digital Logic Architecture' },
-  { name: 'MOHAMMED SUHAIL', role: 'FOUNDER', domain: 'Interactive EDA Simulation & Software Stack' },
-  { name: 'THILUCK', role: 'FOUNDER', domain: 'SystemVerilog, UVM & Hardware Verification' },
-  { name: 'BOOMIKA', role: 'FOUNDER', domain: 'FPGA Architecture & Silicon Engineering' },
-  { name: 'BASHA DHARAANYA', role: 'FOUNDER', domain: 'Digital Circuit Synthesis & Hardware Logic' },
-  { name: 'MARY SHIMONA', role: 'FOUNDER', domain: 'Embedded Systems & AI Silicon Architecture' }
+const TEAM_MEMBERS = [
+  { name: 'DEEPAK KUMAR AP', designation: 'VLSI Architecture & Platform Design' },
+  { name: 'MITHRAN B', designation: 'RTL Design & Digital Logic Architecture' },
+  { name: 'MOHAMMED SUHAIL', designation: 'Interactive EDA Simulation & Software Stack' },
+  { name: 'THILUCK', designation: 'SystemVerilog, UVM & Hardware Verification' },
+  { name: 'BOOMIKA', designation: 'FPGA Architecture & Silicon Engineering' },
+  { name: 'BASHA DHARAANYA', designation: 'Digital Circuit Synthesis & Hardware Logic' },
+  { name: 'MARY SHIMONA', designation: 'Embedded Systems & AI Silicon Architecture' }
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = memo(({
@@ -1083,45 +1083,41 @@ export const LandingPage: React.FC<LandingPageProps> = memo(({
         </div>
       )}
 
-      {/* 4. PSNACET LEADERSHIP & FOUNDERS SHOWCASE */}
+      {/* 4. PSNACET LEADERSHIP & ENGINEERING TEAM */}
       <div className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full border-t border-[#22242f]">
         <div className="text-center mb-10">
           <div className="text-xs font-mono font-bold text-[#e5a93c] tracking-wider uppercase mb-2">
-            PSNACET VLSI Department Leadership
+            PSNACET VLSI Department Leadership & Engineering Team
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">
-            Mentor & Founders of VLSI Expert
+            VLSI Expert Leadership & Team
           </h2>
           <p className="text-[#8c91a0] max-w-2xl mx-auto text-sm leading-relaxed">
-            Brought to you by <strong className="text-white">PSNACET</strong> mentor and founders empowering the next generation of VLSI and semiconductor design engineers.
+            Empowering the next generation of VLSI and semiconductor design engineers at <strong className="text-white">PSNACET</strong>.
           </p>
         </div>
 
-        {/* Mentor & HOD Featured Card */}
+        {/* Head of Department Featured Card */}
         <div className="mb-8 max-w-3xl mx-auto">
           <div className="p-6 rounded-2xl bg-[#0e0f14] border border-[#22242f] hover:border-[#e5a93c] hover:shadow-[0_0_20px_rgba(229,169,60,0.15)] transition-all shadow-sm flex flex-col sm:flex-row items-center gap-5">
             <div className="w-14 h-14 rounded-xl bg-[#e5a93c]/20 border border-[#e5a93c]/40 flex items-center justify-center text-[#e5a93c] font-black text-lg font-mono shrink-0 shadow-inner">
               MK
             </div>
             <div className="text-center sm:text-left flex-1">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1 text-xs font-mono text-[#8c91a0]">
-                <span className="text-[#e5a93c] font-bold bg-[#e5a93c]/15 px-2 py-0.5 rounded border border-[#e5a93c]/30">MENTOR & HOD</span>
-                <span className="text-[#3e424f]">·</span>
-                <span className="text-white">EE-VLSI Design & Technology</span>
-                <span className="text-[#3e424f]">·</span>
-                <span className="text-[#e5a93c] font-semibold">PSNACET</span>
+              <h3 className="text-xl font-bold text-white tracking-tight mb-1">{MENTOR.name}</h3>
+              <div className="text-xs font-mono text-[#e5a93c] font-bold tracking-wide mb-1">
+                {MENTOR.designation}
               </div>
-              <h3 className="text-lg font-bold text-white tracking-tight">{MENTOR.name}</h3>
-              <p className="text-xs text-[#8c91a0] font-normal mt-0.5">{MENTOR.desc}</p>
+              <p className="text-xs text-[#8c91a0] font-normal">{MENTOR.desc}</p>
             </div>
           </div>
         </div>
 
-        {/* 7 Founders Grid */}
+        {/* Engineering Team Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {FOUNDERS.map((founder, index) => (
+          {TEAM_MEMBERS.map((member, index) => (
             <div
-              key={founder.name}
+              key={member.name}
               className="p-5 rounded-xl bg-[#0e0f14] hover:bg-[#15161d] border border-[#22242f] hover:border-[#e5a93c] hover:shadow-[0_0_18px_rgba(229,169,60,0.15)] transition-all shadow-sm flex flex-col justify-between group"
             >
               <div>
@@ -1129,23 +1125,23 @@ export const LandingPage: React.FC<LandingPageProps> = memo(({
                   <span className="text-xs font-mono font-bold text-[#e5a93c] bg-[#e5a93c]/15 px-2 py-0.5 rounded border border-[#e5a93c]/30">
                     0{index + 1}.
                   </span>
-                  <span className="text-[10px] font-mono text-[#e5a93c] uppercase tracking-wider font-bold">
-                    FOUNDER
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                    PSNACET
                   </span>
                 </div>
 
                 <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-tight group-hover:text-[#e5a93c] transition-colors">
-                  {founder.name}
+                  {member.name}
                 </h3>
 
-                <p className="text-xs text-[#8c91a0] leading-relaxed">
-                  {founder.domain}
+                <p className="text-xs text-[#8c91a0] leading-relaxed font-mono">
+                  {member.designation}
                 </p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#22242f] flex items-center justify-between text-[11px] font-mono text-[#6c7280]">
                 <span className="text-slate-400">PSNACET</span>
-                <span className="text-[#e5a93c] font-semibold">VLSI Founder</span>
+                <span className="text-[#e5a93c] font-semibold">VLSI Expert</span>
               </div>
             </div>
           ))}

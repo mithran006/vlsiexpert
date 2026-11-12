@@ -13,101 +13,10 @@ import { LeeMazeSimulator } from './VlsiGraph/LeeMazeSimulator';
 import { SteinerHeuristicSimulator } from './VlsiGraph/SteinerHeuristicSimulator';
 import { ObddRobddSimulator } from './VlsiGraph/ObddRobddSimulator';
 import { DataFlowGraphSimulator } from './VlsiGraph/DataFlowGraphSimulator';
+import { AlgorithmProblemSolver } from './VlsiGraph/AlgorithmProblemSolver';
 
-export interface AlgorithmProblemMapping {
-  id: string;
-  label: string;
-  shortName: string;
-  desc: string;
-  problemIds: string[];
-}
-
-export const ALGORITHM_ASSIGNED_PROBLEMS: Record<string, AlgorithmProblemMapping> = {
-  kl_algorithm: {
-    id: 'kl_algorithm',
-    label: 'Kernighan-Lin (KL) Min-Cut Netlist Partitioning',
-    shortName: '1. KL Algorithm',
-    desc: 'Bipartitioning, FM bucket sort, and simulated annealing placement',
-    problemIds: ['grph-20', 'grph-21', 'grph-24', 'grph-25', 'grph-37']
-  },
-  lee_maze: {
-    id: 'lee_maze',
-    label: "Lee's Maze Router BFS Grid Expansion & Backtrace",
-    shortName: '2. Lee Maze Router',
-    desc: 'Breadth-first search wavefront propagation, detour metrics, and grid routing',
-    problemIds: ['grph-07', 'grph-08', 'grph-09', 'grph-10', 'grph-18']
-  },
-  steiner_heuristic: {
-    id: 'steiner_heuristic',
-    label: 'Steiner Minimal Tree & Hanan Grid Interconnects',
-    shortName: '3. Steiner Heuristic',
-    desc: 'Hanan grid intersection, Kruskal RMST, and Hwang 2/3 wirelength bound',
-    problemIds: ['grph-11', 'grph-12', 'grph-13', 'grph-14', 'grph-19']
-  },
-  obdd_robdd: {
-    id: 'obdd_robdd',
-    label: 'Reduced Ordered Binary Decision Diagrams (ROBDD)',
-    shortName: '4. OBDD & ROBDD',
-    desc: 'Canonical Boolean synthesis, Shannon expansion, and variable ordering',
-    problemIds: ['grph-30', 'grph-35', 'grph-36', 'grph-53', 'grph-54']
-  },
-  data_flow_graph: {
-    id: 'data_flow_graph',
-    label: 'Data Flow Graph (DFG) Scheduling & Retiming',
-    shortName: '5. Data Flow Graph',
-    desc: 'HLS ASAP, ALAP, operation mobility, and pipeline retiming',
-    problemIds: ['grph-29', 'grph-39', 'grph-43', 'grph-47', 'grph-57']
-  },
-  dag_sta: {
-    id: 'dag_sta',
-    label: 'DAG Static Timing Analysis & Critical Path',
-    shortName: '6. DAG & STA',
-    desc: 'Topological sort, arrival time accumulation, and slack evaluation',
-    problemIds: ['grph-01', 'grph-02', 'grph-03', 'grph-04', 'grph-05']
-  },
-  shortest_path: {
-    id: 'shortest_path',
-    label: 'Shortest Path & Dijkstra Min-RC Wire Delay',
-    shortName: '7. Shortest Path',
-    desc: 'Elmore RC model delay, latency reduction, and bandwidth optimization',
-    problemIds: ['grph-06', 'grph-31', 'grph-32', 'grph-49', 'grph-50']
-  },
-  longest_path: {
-    id: 'longest_path',
-    label: 'Longest Path Critical Setup Slack & Fmax Closure',
-    shortName: '8. Longest Path',
-    desc: 'Timing closure, pipelined datapath balance, and low-power closure',
-    problemIds: ['grph-42', 'grph-59', 'grph-60', 'grph-38', 'grph-56']
-  },
-  liao_wong: {
-    id: 'liao_wong',
-    label: 'Liao-Wong 1D Layout Compaction & Constraint Graph',
-    shortName: '9. Liao-Wong',
-    desc: 'Vertical & horizontal constraint graphs, sequence pairs, and B*-tree',
-    problemIds: ['grph-15', 'grph-16', 'grph-17', 'grph-22', 'grph-23']
-  },
-  bellman_ford: {
-    id: 'bellman_ford',
-    label: 'Bellman-Ford Clock Skew & Negative Cycle Detection',
-    shortName: '10. Bellman-Ford',
-    desc: 'Clock skew cycle analysis, CDC isolation, and race condition check',
-    problemIds: ['grph-33', 'grph-44', 'grph-48', 'grph-51', 'grph-52']
-  },
-  spanning_tree: {
-    id: 'spanning_tree',
-    label: 'Spanning Tree MST vs Steiner & Clock Tree Routing',
-    shortName: '11. Spanning Tree',
-    desc: 'Clock Tree Synthesis (CTS), fault tolerance, and minimum spanning trees',
-    problemIds: ['grph-26', 'grph-27', 'grph-28', 'grph-45', 'grph-46']
-  },
-  dp_buffer: {
-    id: 'dp_buffer',
-    label: 'Dynamic Programming Van Ginneken Elmore Repeater Insertion',
-    shortName: '12. Dynamic Prog',
-    desc: 'Van Ginneken polynomial-time buffer insertion for RC interconnects',
-    problemIds: ['grph-34', 'grph-40', 'grph-41', 'grph-55', 'grph-58']
-  }
-};
+import { ALGORITHM_ASSIGNED_PROBLEMS, AlgorithmProblemMapping } from './VlsiGraph/algorithmAssignedProblems';
+export { ALGORITHM_ASSIGNED_PROBLEMS, type AlgorithmProblemMapping };
 
 interface VlsiGraphTheoryStudyProps {
   onSelectProblem: (problem: Problem) => void;
@@ -123,6 +32,41 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
   const [activeTab, setActiveTab] = useState<'labs' | 'problems' | 'theory'>('labs');
   const [selectedLab, setSelectedLab] = useState<string>('kl_algorithm');
   const [selectedAlgorithmFilter, setSelectedAlgorithmFilter] = useState<string>('all');
+  
+  // Algorithm Problem Solver state (solving via algorithms, no coding required)
+  const [activeSolverProblem, setActiveSolverProblem] = useState<Problem | null>(null);
+
+  // Local storage synchronization for study plan problem solving
+  const [localSolvedIds, setLocalSolvedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('vlsi_study_plan_solved_problems');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const effectiveSolvedIds = useMemo(() => {
+    return Array.from(new Set([...(solvedProblemIds || []), ...localSolvedIds]));
+  }, [solvedProblemIds, localSolvedIds]);
+
+  const handleSolveSuccess = (problemId: string) => {
+    setLocalSolvedIds(prev => {
+      if (prev.includes(problemId)) return prev;
+      const updated = [...prev, problemId];
+      try {
+        localStorage.setItem('vlsi_study_plan_solved_problems', JSON.stringify(updated));
+        const appCompleted = localStorage.getItem('silicon_arena_completed_problems');
+        const list = appCompleted ? JSON.parse(appCompleted) : [];
+        if (!list.includes(problemId)) {
+          localStorage.setItem('silicon_arena_completed_problems', JSON.stringify([...list, problemId]));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+  };
 
   // ==========================================
   // LAB 1: DAG & STA TIMING ANALYSIS
@@ -581,29 +525,29 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
           </div>
 
           {/* Quick Progress Card */}
-          <div className="bg-[#191a21] border border-[#2b2d39] p-5 rounded-2xl shadow-xl shrink-0 w-full sm:w-auto min-w-[240px]">
-            <div className="text-xs text-slate-400 font-medium mb-1">Study Plan Progress</div>
-            <div className="text-2xl font-black text-[#ffa116] flex items-baseline gap-1">
-              <span>{VLSI_GRAPH_PROBLEMS.filter(p => solvedProblemIds.includes(p.id)).length}</span>
-              <span className="text-sm text-slate-500 font-normal">/ {VLSI_GRAPH_PROBLEMS.length} Solved</span>
+          <div className="bg-[#14151b] border border-[#22242f] p-5 rounded-2xl shadow-xl shrink-0 w-full sm:w-auto min-w-[240px]">
+            <div className="text-xs text-zinc-400 font-medium mb-1">Study Plan Progress</div>
+            <div className="text-2xl font-black text-[#e5a93c] flex items-baseline gap-1">
+              <span>{VLSI_GRAPH_PROBLEMS.filter(p => effectiveSolvedIds.includes(p.id)).length}</span>
+              <span className="text-sm text-zinc-500 font-normal">/ {VLSI_GRAPH_PROBLEMS.length} Solved</span>
             </div>
 
-            <div className="w-full bg-[#111215] h-2 rounded-full mt-3 overflow-hidden border border-[#262833]">
+            <div className="w-full bg-[#0a0b0e] h-2 rounded-full mt-3 overflow-hidden border border-[#22242f]">
               <div 
-                className="bg-amber-500 h-full transition-all duration-500"
-                style={{ width: `${(VLSI_GRAPH_PROBLEMS.filter(p => solvedProblemIds.includes(p.id)).length / VLSI_GRAPH_PROBLEMS.length) * 100}%` }}
+                className="bg-[#e5a93c] h-full transition-all duration-500"
+                style={{ width: `${(VLSI_GRAPH_PROBLEMS.filter(p => effectiveSolvedIds.includes(p.id)).length / VLSI_GRAPH_PROBLEMS.length) * 100}%` }}
               />
             </div>
 
             <button
               onClick={() => {
-                const unsolved = VLSI_GRAPH_PROBLEMS.find(p => !solvedProblemIds.includes(p.id)) || VLSI_GRAPH_PROBLEMS[0];
-                onSelectProblem(unsolved);
+                const unsolved = VLSI_GRAPH_PROBLEMS.find(p => !effectiveSolvedIds.includes(p.id)) || VLSI_GRAPH_PROBLEMS[0];
+                setActiveSolverProblem(unsolved);
               }}
-              className="mt-4 w-full py-2 px-3 rounded-xl bg-[#ffa116] hover:bg-[#ff9900] active:scale-95 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              className="mt-4 w-full py-2.5 px-3 rounded-xl bg-[#e5a93c] hover:bg-[#d4972e] active:scale-95 text-black font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Continue Problem Drills</span>
+              <Play className="w-3.5 h-3.5 fill-black text-black" />
+              <span>Solve Problems via Algorithm</span>
             </button>
           </div>
         </div>
@@ -1318,7 +1262,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
             const assignedProblems = currentAlg.problemIds
               .map(id => VLSI_GRAPH_PROBLEMS.find(p => p.id === id))
               .filter((p): p is Problem => Boolean(p));
-            const solvedCount = assignedProblems.filter(p => solvedProblemIds.includes(p.id)).length;
+            const solvedCount = assignedProblems.filter(p => effectiveSolvedIds.includes(p.id)).length;
 
             return (
               <div className="p-6 rounded-2xl bg-[#111217] border border-[#22242f] shadow-xl space-y-4">
@@ -1333,7 +1277,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                         </span>
                       </h4>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        5 hands-on HDL & EDA algorithm synthesis challenges specifically assigned for <strong className="text-zinc-200">{currentAlg.label}</strong>.
+                        5 algorithm challenges assigned for <strong className="text-zinc-200">{currentAlg.label}</strong>. Solve problems using algorithm principles directly without writing code.
                       </p>
                     </div>
                   </div>
@@ -1351,7 +1295,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   {assignedProblems.map((p, pIdx) => {
-                    const isSolved = solvedProblemIds.includes(p.id);
+                    const isSolved = effectiveSolvedIds.includes(p.id);
                     return (
                       <div
                         key={p.id}
@@ -1393,10 +1337,10 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                             )}
                           </span>
                           <button
-                            onClick={() => onSelectProblem(p)}
+                            onClick={() => setActiveSolverProblem(p)}
                             className="px-2.5 py-1 rounded-lg bg-[#e5a93c] hover:bg-[#d4972e] text-black text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
                           >
-                            Solve →
+                            Solve via Algo →
                           </button>
                         </div>
                       </div>
@@ -1424,7 +1368,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                 </span>
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Solve each algorithm challenge with synthesizable HDL and cycle-accurate waveform verification.
+                Solve each algorithm challenge directly using algorithm principles, graph operations, and timing analysis without writing code.
               </p>
             </div>
 
@@ -1466,7 +1410,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
 
               {Object.values(ALGORITHM_ASSIGNED_PROBLEMS).map(alg => {
                 const isSelected = selectedAlgorithmFilter === alg.id;
-                const solvedInAlg = alg.problemIds.filter(id => solvedProblemIds.includes(id)).length;
+                const solvedInAlg = alg.problemIds.filter(id => effectiveSolvedIds.includes(id)).length;
                 return (
                   <button
                     key={alg.id}
@@ -1516,7 +1460,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                     </thead>
                     <tbody className="divide-y divide-[#22242f]">
                       {displayedProblems.map((problem, idx) => {
-                        const isSolved = solvedProblemIds.includes(problem.id);
+                        const isSolved = effectiveSolvedIds.includes(problem.id);
                         // Find which algorithm it belongs to if any
                         const assignedAlg = Object.values(ALGORITHM_ASSIGNED_PROBLEMS).find(a =>
                           a.problemIds.includes(problem.id)
@@ -1525,7 +1469,7 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                         return (
                           <tr 
                             key={problem.id}
-                            onClick={() => onSelectProblem(problem)}
+                            onClick={() => setActiveSolverProblem(problem)}
                             className="hover:bg-[#181920] transition-colors cursor-pointer group"
                           >
                             <td className="py-3.5 px-4 text-center">
@@ -1572,11 +1516,11 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onSelectProblem(problem);
+                                  setActiveSolverProblem(problem);
                                 }}
                                 className="px-3 py-1.5 rounded-lg bg-[#14151b] group-hover:bg-[#e5a93c] text-zinc-300 group-hover:text-black font-bold text-xs transition-all shadow-sm cursor-pointer"
                               >
-                                Solve →
+                                Solve via Algo →
                               </button>
                             </td>
                           </tr>
@@ -1794,6 +1738,34 @@ export const VlsiGraphTheoryStudy: React.FC<VlsiGraphTheoryStudyProps> = ({
           </div>
 
         </div>
+      )}
+
+      {/* IN-PLACE ALGORITHM PROBLEM SOLVER (SOLVING WITHOUT HDL CODING) */}
+      {activeSolverProblem && (
+        <AlgorithmProblemSolver
+          problem={activeSolverProblem}
+          isSolved={effectiveSolvedIds.includes(activeSolverProblem.id)}
+          onSolveSuccess={handleSolveSuccess}
+          onClose={() => setActiveSolverProblem(null)}
+          onNextProblem={() => {
+            const currentIdx = VLSI_GRAPH_PROBLEMS.findIndex(p => p.id === activeSolverProblem.id);
+            if (currentIdx >= 0 && currentIdx < VLSI_GRAPH_PROBLEMS.length - 1) {
+              setActiveSolverProblem(VLSI_GRAPH_PROBLEMS[currentIdx + 1]);
+            } else {
+              const nextUnsolved = VLSI_GRAPH_PROBLEMS.find(p => !effectiveSolvedIds.includes(p.id) && p.id !== activeSolverProblem.id);
+              if (nextUnsolved) {
+                setActiveSolverProblem(nextUnsolved);
+              } else {
+                setActiveSolverProblem(null);
+              }
+            }
+          }}
+          onOpenCodeEditor={() => {
+            const p = activeSolverProblem;
+            setActiveSolverProblem(null);
+            onSelectProblem(p);
+          }}
+        />
       )}
 
     </div>

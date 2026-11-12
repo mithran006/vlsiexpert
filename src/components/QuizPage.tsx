@@ -54,7 +54,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [showExplanation, setShowExplanation] = useState<Record<number, boolean>>({});
   const [quizCompleted, setQuizCompleted] = useState<boolean>(false);
-  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(20 * 60); // 20 mins for 20 Qs
+  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(30 * 60); // 30 mins for 50 Qs (50 Marks)
   const [timerActive, setTimerActive] = useState<boolean>(false);
 
   // Scores History from LocalStorage
@@ -77,7 +77,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setShowExplanation({});
-    setTimeRemainingSeconds(20 * 60);
+    setTimeRemainingSeconds(30 * 60);
     setTimerActive(false);
   }, [selectedTopicId]);
 
@@ -110,7 +110,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setShowExplanation({});
-    setTimeRemainingSeconds(20 * 60);
+    setTimeRemainingSeconds(30 * 60);
     setTimerActive(true);
   };
 
@@ -187,7 +187,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
     ? QUIZ_TOPICS
     : QUIZ_TOPICS.filter(t => t.categoryGroup === selectedCategoryGroup);
 
-  const totalPossibleScore = QUIZ_TOPICS.reduce((acc, t) => acc + (t.questionCount || 20), 0);
+  const totalPossibleScore = QUIZ_TOPICS.reduce((acc, t) => acc + (t.questionCount || 50), 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-[#eff1f6]">
@@ -214,7 +214,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
             <div>
               <div className="text-[11px] text-[#9da3b4] font-mono">Performance Metric</div>
               <div className="text-sm font-bold text-[#e5a93c] font-mono">
-                {Object.values(quizHistory).reduce((a, b: any) => a + (b?.bestScore || 0), 0)} / {totalPossibleScore} Points
+                {Object.values(quizHistory).reduce((a, b: any) => a + (b?.bestScore || 0), 0)} / {totalPossibleScore} Marks
               </div>
             </div>
           </div>
@@ -271,11 +271,11 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
                 </div>
                 {topicScore ? (
                   <span className="text-[11px] font-mono text-[#e5a93c] font-bold bg-[#e5a93c]/10 px-2 py-0.5 rounded border border-[#e5a93c]/20">
-                    Best: {topicScore.bestScore}/{topic.questionCount || 20}
+                    Best: {topicScore.bestScore}/{topic.questionCount || 50} Marks
                   </span>
                 ) : (
                   <span className="text-[11px] font-mono text-[#9da3b4] bg-[#0a0b0e] px-2 py-0.5 rounded border border-[#22242f]">
-                    {topic.questionCount || 20} Qs
+                    {topic.questionCount || 50} Qs (50 Marks)
                   </span>
                 )}
               </div>
@@ -303,21 +303,21 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
             {currentTopicInfo.title} Assessment
           </h2>
           <p className="text-[#c2c7d0] text-sm mb-6 max-w-xl mx-auto leading-relaxed">
-            Ready to test your knowledge in {currentTopicInfo.title}? This test consists of <strong>20 multiple choice questions</strong> covering fundamental concepts, numerical problems, and industrial EDA design rules.
+            Ready to test your knowledge in {currentTopicInfo.title}? This comprehensive assessment consists of <strong>50 multiple choice questions (50 Marks)</strong> covering fundamental principles, numerical calculations, protocol rules, and industrial EDA design standards.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 max-w-lg mx-auto text-left text-xs">
             <div className="p-3.5 rounded-xl bg-[#0a0b0e] border border-[#22242f]">
-              <span className="text-[#9da3b4] block mb-1">Questions</span>
-              <span className="text-sm font-bold text-white">20 Questions</span>
+              <span className="text-[#9da3b4] block mb-1">Questions & Marks</span>
+              <span className="text-sm font-bold text-white">50 Questions (50 Marks)</span>
             </div>
             <div className="p-3.5 rounded-xl bg-[#0a0b0e] border border-[#22242f]">
               <span className="text-[#9da3b4] block mb-1">Time Limit</span>
-              <span className="text-sm font-bold text-[#e5a93c]">20 Minutes</span>
+              <span className="text-sm font-bold text-[#e5a93c]">30 Minutes</span>
             </div>
             <div className="p-3.5 rounded-xl bg-[#0a0b0e] border border-[#22242f]">
               <span className="text-[#9da3b4] block mb-1">Passing Grade</span>
-              <span className="text-sm font-bold text-[#e5a93c]">90% (18/20)</span>
+              <span className="text-sm font-bold text-[#e5a93c]">90% (45 / 50 Marks)</span>
             </div>
           </div>
 
@@ -326,7 +326,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
             className="px-7 py-3 rounded-xl bg-[#e5a93c] hover:bg-[#d99b2e] text-[#0a0b0e] font-black text-sm shadow-md transition-all inline-flex items-center gap-2 cursor-pointer active:scale-95"
           >
             <Play className="w-4 h-4 fill-[#0a0b0e] text-[#0a0b0e]" />
-            <span>Start 20-Question Assessment</span>
+            <span>Start 50-Question Assessment (50 Marks)</span>
           </button>
         </div>
       ) : quizCompleted ? (
@@ -347,28 +347,28 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
           <div className="inline-flex flex-col items-center justify-center px-8 py-6 rounded-2xl bg-[#0a0b0e] border border-[#22242f] mb-8 shadow-inner">
             <span className="text-xs font-mono text-[#9da3b4] uppercase tracking-widest mb-1">Your Final Score</span>
             <span className="text-5xl font-black text-[#e5a93c]">
-              {correctCount} / 20
+              {correctCount} / {activeQuizQuestions.length || 50} Marks
             </span>
             <span className="text-xs text-[#9da3b4] mt-2 font-medium">
-              Percentage: {Math.round((correctCount / 20) * 100)}%
+              Percentage: {Math.round((correctCount / (activeQuizQuestions.length || 50)) * 100)}%
             </span>
           </div>
 
-          {/* Certificate Notice if >= 90% */}
-          {correctCount >= 18 ? (
+          {/* Certificate Notice if >= 90% (45/50) */}
+          {correctCount >= 45 ? (
             <div className="p-4 rounded-2xl bg-[#e5a93c]/10 border border-[#e5a93c]/30 text-[#e5a93c] text-xs font-medium mb-8 max-w-md mx-auto flex items-center gap-3 text-left">
               <Award className="w-6 h-6 text-[#e5a93c] shrink-0" />
               <div>
                 <strong className="block text-white">Congratulations {userName}!</strong>
-                You passed the {currentTopicInfo.title} quiz with Distinction (&ge;90%).
+                You passed the {currentTopicInfo.title} assessment with Distinction (&ge;90%, {correctCount}/50 marks).
               </div>
             </div>
           ) : (
             <div className="p-4 rounded-2xl bg-[#181920] border border-[#e5a93c]/30 text-[#e5a93c] text-xs font-medium mb-8 max-w-md mx-auto flex items-center gap-3 text-left">
               <AlertCircle className="w-6 h-6 text-[#e5a93c] shrink-0" />
               <div>
-                <strong className="block text-white">Keep Practicing!</strong>
-                Review the conceptual hints below to guide your problem-solving and boost your score on the next attempt.
+                <strong className="block text-white">Passing Score: 45 / 50 Marks (90%)</strong>
+                You scored {correctCount}/50 marks. Review the conceptual hints below to guide your problem-solving and boost your score on the next attempt.
               </div>
             </div>
           )}
@@ -499,7 +499,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
             <div className="flex items-center justify-between bg-[#111217] p-4 rounded-xl border border-[#22242f] text-xs">
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded bg-[#e5a93c]/15 text-[#e5a93c] font-mono font-bold border border-[#e5a93c]/30">
-                  Question {currentQuestionIndex + 1} of 20
+                  Question {currentQuestionIndex + 1} of {activeQuizQuestions.length || 50} (1 Mark Each)
                 </span>
                 <span className="text-[#2b2d39] hidden sm:inline">•</span>
                 <span className="text-[#c2c7d0] font-medium hidden sm:inline">{currentQuestion.category}</span>
@@ -628,8 +628,8 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
                 Question Navigator
               </h4>
 
-              {/* 1 to 20 Grid */}
-              <div className="grid grid-cols-5 gap-2">
+              {/* 1 to 50 Grid */}
+              <div className="grid grid-cols-5 gap-1.5 max-h-72 overflow-y-auto pr-1">
                 {activeQuizQuestions.map((_, idx) => {
                   const isCurrent = idx === currentQuestionIndex;
                   const isAnswered = selectedAnswers[idx] !== undefined;
@@ -645,7 +645,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
                     <button
                       key={idx}
                       onClick={() => setCurrentQuestionIndex(idx)}
-                      className={`h-9 rounded-xl border text-xs flex items-center justify-center transition-all cursor-pointer ${btnStyle}`}
+                      className={`h-8 rounded-lg border text-[11px] font-mono flex items-center justify-center transition-all cursor-pointer ${btnStyle}`}
                     >
                       {idx + 1}
                     </button>
@@ -656,11 +656,15 @@ export const QuizPage: React.FC<QuizPageProps> = ({ userName, onTriggerAntiCopy 
               <div className="pt-4 border-t border-[#22242f] space-y-2 text-[11px] text-[#9da3b4]">
                 <div className="flex items-center justify-between">
                   <span>Answered:</span>
-                  <span className="font-bold text-white">{answeredCount} / 20</span>
+                  <span className="font-bold text-white">{answeredCount} / {activeQuizQuestions.length || 50}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Progress:</span>
-                  <span className="font-bold text-[#e5a93c]">{Math.round((answeredCount / 20) * 100)}%</span>
+                  <span className="font-bold text-[#e5a93c]">{Math.round((answeredCount / (activeQuizQuestions.length || 50)) * 100)}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Passing Target:</span>
+                  <span className="font-bold text-[#e5a93c]">45 / 50 Marks (90%)</span>
                 </div>
               </div>
 

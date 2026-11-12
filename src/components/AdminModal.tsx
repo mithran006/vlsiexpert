@@ -16,21 +16,22 @@ interface AdminModalProps {
   onUpdateProblem?: (problem: Problem) => void;
   onDeleteProblem?: (problemId: string) => void;
   allProblems?: Problem[];
+  onAdminLoginSuccess?: (adminUser: any, token: string) => void;
 }
 
 const AUTHORIZED_ADMINS = [
-  { name: 'VLSI EXPERT ADMIN 001', role: 'ADMINISTRATOR', defaultEmail: 'vlsiexpert001@gmail.com' },
-  { name: 'VLSI EXPERT ADMIN 002', role: 'ADMINISTRATOR', defaultEmail: 'vlsiexpert002@gmail.com' },
-  { name: 'VLSI EXPERT ADMIN 003', role: 'ADMINISTRATOR', defaultEmail: 'vlsiexpert003@gmail.com' },
-  { name: 'VLSI EXPERT ADMIN 004', role: 'ADMINISTRATOR', defaultEmail: 'vlsiexpert004@gmail.com' },
-  { name: 'DR MANIRAJ KUMAR P', role: 'MENTOR & HOD OF EE-VLSI DESIGN & TECHNOLOGY', defaultEmail: 'pmanirajkumar@psnacet.edu.in' },
-  { name: 'DEEPAK KUMAR AP', role: 'FOUNDER', defaultEmail: 'kumarapdeepak16@gmail.com' },
-  { name: 'MITRAN B', role: 'FOUNDER', defaultEmail: 'mitranb@psnacet.edu.in' },
-  { name: 'MOHAMMED SUHAIL', role: 'FOUNDER', defaultEmail: 'mohammedsuhail@psnacet.edu.in' },
-  { name: 'THILUCK', role: 'FOUNDER', defaultEmail: 'thiluck@psnacet.edu.in' },
-  { name: 'BOOMIKA', role: 'FOUNDER', defaultEmail: 'boomika@psnacet.edu.in' },
-  { name: 'BASHA DHARAANYA', role: 'FOUNDER', defaultEmail: 'bashadharaanya@psnacet.edu.in' },
-  { name: 'MARY SHIMONA', role: 'FOUNDER', defaultEmail: 'maryshimona@psnacet.edu.in' }
+  { name: 'VLSI EXPERT ADMIN 001', designation: 'Administrator', defaultEmail: 'vlsiexpert001@gmail.com' },
+  { name: 'VLSI EXPERT ADMIN 002', designation: 'Administrator', defaultEmail: 'vlsiexpert002@gmail.com' },
+  { name: 'VLSI EXPERT ADMIN 003', designation: 'Administrator', defaultEmail: 'vlsiexpert003@gmail.com' },
+  { name: 'VLSI EXPERT ADMIN 004', designation: 'Administrator', defaultEmail: 'vlsiexpert004@gmail.com' },
+  { name: 'DR P MANIRAJ KUMAR', designation: 'PROFESSOR & HEAD IC/ EE-VLSI DEPARTMENT', defaultEmail: 'pmanirajkumar@psnacet.edu.in' },
+  { name: 'DEEPAK KUMAR AP', designation: 'VLSI Architecture & Platform Design', defaultEmail: 'kumarapdeepak16@gmail.com' },
+  { name: 'MITHRAN B', designation: 'RTL Design & Digital Logic Architecture', defaultEmail: 'mithranb@psnacet.edu.in' },
+  { name: 'MOHAMMED SUHAIL', designation: 'Interactive EDA Simulation & Software Stack', defaultEmail: 'mohammedsuhail@psnacet.edu.in' },
+  { name: 'THILUCK', designation: 'SystemVerilog, UVM & Hardware Verification', defaultEmail: 'thiluck@psnacet.edu.in' },
+  { name: 'BOOMIKA', designation: 'FPGA Architecture & Silicon Engineering', defaultEmail: 'boomika@psnacet.edu.in' },
+  { name: 'BASHA DHARAANYA', designation: 'Digital Circuit Synthesis & Hardware Logic', defaultEmail: 'bashadharaanya@psnacet.edu.in' },
+  { name: 'MARY SHIMONA', designation: 'Embedded Systems & AI Silicon Architecture', defaultEmail: 'maryshimona@psnacet.edu.in' }
 ];
 
 export const AdminModal: React.FC<AdminModalProps> = ({
@@ -39,7 +40,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   onAddProblem,
   onUpdateProblem,
   onDeleteProblem,
-  allProblems = []
+  allProblems = [],
+  onAdminLoginSuccess
 }) => {
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -371,7 +373,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 >
                   {AUTHORIZED_ADMINS.map((admin, idx) => (
                     <option key={admin.name} value={idx}>
-                      {admin.name} — {admin.defaultEmail} ({admin.role})
+                      {admin.name} — {admin.defaultEmail} ({admin.designation})
                     </option>
                   ))}
                 </select>
@@ -430,7 +432,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 <strong>VLSI Expert Administrators:</strong> vlsiexpert001@gmail.com, vlsiexpert002@gmail.com, vlsiexpert003@gmail.com, vlsiexpert004@gmail.com
               </p>
               <p className="text-slate-400 text-[9px] pt-1 border-t border-slate-800/60">
-                PSNACET VLSI Dept Mentor & Founders have complementary access credentials.
+                PSNACET VLSI Engineering Personnel have complementary access credentials.
               </p>
             </div>
           </div>

@@ -100,7 +100,7 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
     return isSolved || (Boolean(savedAnswerCode) && savedAnswerCode !== cleanStarter);
   });
 
-  const [panelLayout, setPanelLayout] = useState<'default' | 'code-expanded' | 'vis-expanded'>('default');
+  const [panelLayout, setPanelLayout] = useState<'default' | 'code-expanded' | 'vis-expanded' | 'vis-maximized'>('default');
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState<boolean>(false);
   const [windowMode, setWindowMode] = useState<'split' | 'lifted' | 'full'>('split');
   const [activeEditorTab, setActiveEditorTab] = useState<'dut' | 'tb' | 'combined'>('dut');
@@ -269,10 +269,13 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
             setSimulationResult(res);
             setIsSimulating(false);
             setOutputFailureTab('waveform');
-            if (!res.passed) {
+            const hasSyntaxError = res.message.toLowerCase().includes('syntax error') || Boolean(res.errorLine);
+            if (hasSyntaxError) {
               setConsoleTab('result');
             } else if (isVlsi || problem.topic === 'cv_robotics') {
               setConsoleTab('waveform');
+              setPanelLayout('vis-expanded');
+              setWindowMode('lifted');
             }
             storageService.saveProblemCode(problem.id, codeToSet);
             storageService.recordCodeAttempt(problem.id, res.passed, codeToSet);
@@ -296,18 +299,25 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
       setSimulationResult(res);
       setIsSimulating(false);
       setOutputFailureTab('waveform');
-      if (!res.passed) {
+      
+      const hasSyntaxError = res.message.toLowerCase().includes('syntax error') || Boolean(res.errorLine);
+
+      if (hasSyntaxError) {
         setConsoleTab('result');
         setIsOutputOpen(true);
       } else {
+        // EXECUTING THE PROGRAM WITHOUT ERROR:
+        // Automatically open the waveform window LARGE (80% height) for seamless EDA viewing
         if (isVlsi || problem.topic === 'cv_robotics') {
           setConsoleTab('waveform');
           setIsOutputOpen(true);
-          if (problem.topic === 'cv_robotics') {
-            setPanelLayout(prev => prev === 'code-expanded' ? 'default' : 'vis-expanded');
-          }
+          setPanelLayout('vis-expanded');
+          setWindowMode('lifted');
         } else {
           setConsoleTab('result');
+          setIsOutputOpen(true);
+          setPanelLayout('vis-expanded');
+          setWindowMode('lifted');
         }
       }
 
@@ -354,18 +364,25 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
       setSimulationResult(res);
       setIsSimulating(false);
       setOutputFailureTab('waveform');
-      if (!res.passed) {
+      
+      const hasSyntaxError = res.message.toLowerCase().includes('syntax error') || Boolean(res.errorLine);
+
+      if (hasSyntaxError) {
         setConsoleTab('result');
         setIsOutputOpen(true);
       } else {
+        // EXECUTING THE PROGRAM WITHOUT ERROR:
+        // Automatically open the waveform window LARGE (80% height) for seamless EDA viewing
         if (isVlsi || problem.topic === 'cv_robotics') {
           setConsoleTab('waveform');
           setIsOutputOpen(true);
-          if (problem.topic === 'cv_robotics') {
-            setPanelLayout(prev => prev === 'code-expanded' ? 'default' : 'vis-expanded');
-          }
+          setPanelLayout('vis-expanded');
+          setWindowMode('lifted');
         } else {
           setConsoleTab('result');
+          setIsOutputOpen(true);
+          setPanelLayout('vis-expanded');
+          setWindowMode('lifted');
         }
       }
 
@@ -1006,7 +1023,9 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
               : panelLayout === 'code-expanded'
               ? 'h-[72%]'
               : panelLayout === 'vis-expanded'
-              ? 'h-[28%]'
+              ? 'h-[20%]'
+              : panelLayout === 'vis-maximized'
+              ? 'h-0 hidden'
               : 'h-1/2'
           } ${isOutputOpen ? 'border-b border-[#262833]' : ''} overflow-hidden transition-all duration-200 bg-[#111215]`}>
             <CodeEditor
@@ -1048,7 +1067,13 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
           {/* Bottom Half: Interactive Console, Testcase & Waveform Container */}
           {isOutputOpen && (
             <div className={`${
-              panelLayout === 'code-expanded' ? 'h-[28%]' : panelLayout === 'vis-expanded' ? 'h-[72%]' : 'h-1/2'
+              panelLayout === 'code-expanded'
+                ? 'h-[28%]'
+                : panelLayout === 'vis-expanded'
+                ? 'h-[80%]'
+                : panelLayout === 'vis-maximized'
+                ? 'h-full'
+                : 'h-1/2'
             } overflow-hidden flex flex-col bg-[#16171d] transition-all duration-200 border-t border-[#262833]`}>
               
               {/* Console Tab Header */}
@@ -1138,13 +1163,33 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
                 </div>
 
                 {/* Console Actions: Height Layout & Collapse */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setPanelLayout(prev => prev === 'code-expanded' ? 'default' : prev === 'default' ? 'vis-expanded' : 'code-expanded')}
-                    className="p-1 rounded hover:bg-[#22232b] text-[#8c91a0] hover:text-white transition-colors cursor-pointer"
-                    title={panelLayout === 'vis-expanded' ? "Collapse Height" : "Expand Height"}
+                    onClick={() => {
+                      setPanelLayout(prev => {
+                        const next = (prev === 'vis-expanded' || prev === 'vis-maximized') ? 'default' : 'vis-expanded';
+                        setWindowMode(next === 'vis-expanded' ? 'lifted' : 'split');
+                        return next;
+                      });
+                    }}
+                    className={`h-6.5 px-2.5 rounded text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      panelLayout === 'vis-expanded' || panelLayout === 'vis-maximized'
+                        ? 'bg-[#e5a93c]/20 text-[#e5a93c] border border-[#e5a93c]/40 font-bold'
+                        : 'hover:bg-[#22232b] text-[#8c91a0] hover:text-white border border-transparent'
+                    }`}
+                    title={panelLayout === 'vis-expanded' || panelLayout === 'vis-maximized' ? "Restore Standard Split (50%)" : "Open Waveform Large (80% Canvas)"}
                   >
-                    {panelLayout === 'vis-expanded' ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    {panelLayout === 'vis-expanded' || panelLayout === 'vis-maximized' ? (
+                      <>
+                        <Minimize2 className="w-3.5 h-3.5 text-[#e5a93c]" />
+                        <span className="hidden sm:inline font-mono">Large (80%)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline font-mono">Expand Large</span>
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => setIsOutputOpen(false)}
@@ -1908,6 +1953,19 @@ export const ProblemWorkspace: React.FC<ProblemWorkspaceProps> = ({
                           onClearForced={handleClearForced}
                           code={code}
                           problem={problem}
+                          windowMode={panelLayout === 'vis-maximized' ? 'full' : panelLayout === 'vis-expanded' ? 'lifted' : 'split'}
+                          onToggleWindowMode={(mode) => {
+                            if (mode === 'full') {
+                              setPanelLayout(prev => prev === 'vis-maximized' ? 'vis-expanded' : 'vis-maximized');
+                              setWindowMode(prev => prev === 'full' ? 'lifted' : 'full');
+                            } else if (mode === 'lifted') {
+                              setPanelLayout('vis-expanded');
+                              setWindowMode('lifted');
+                            } else {
+                              setPanelLayout('default');
+                              setWindowMode('split');
+                            }
+                          }}
                           onDownloadVcd={() => downloadVcdWaveform(problem, simulationResult)}
                           onDownloadTestbench={() => downloadTestbench(problem, code)}
                           onDownloadCsv={() => downloadCsvTrace(problem, simulationResult)}

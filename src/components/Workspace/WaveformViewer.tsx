@@ -64,14 +64,14 @@ interface WaveformViewerProps {
 
 // 8 High-Contrast EDA Color Palette matching authentic logic analyzers
 const SIGNAL_PALETTE = [
-  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)' },  // Cyan (Signal 0)
-  { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.18)' },  // Emerald Green (Signal 1)
-  { stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.18)' },  // Amber/Gold (Signal 2 - typically output)
-  { stroke: '#c084fc', fill: 'rgba(192, 132, 252, 0.18)' }, // Purple (Signal 3)
-  { stroke: '#fb7185', fill: 'rgba(251, 113, 133, 0.18)' }, // Rose (Signal 4)
-  { stroke: '#60a5fa', fill: 'rgba(96, 165, 250, 0.18)' },  // Blue (Signal 5)
-  { stroke: '#2dd4bf', fill: 'rgba(45, 212, 191, 0.18)' },  // Teal (Signal 6)
-  { stroke: '#fde047', fill: 'rgba(253, 224, 71, 0.18)' },  // Bright Yellow (Signal 7)
+  { stroke: '#e5a93c', fill: 'rgba(229, 169, 60, 0.18)' },  // Yellow/Gold (Primary Theme Accent)
+  { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.18)' },  // Emerald Green
+  { stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.18)' },  // Amber
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)' },  // Sky
+  { stroke: '#c084fc', fill: 'rgba(192, 132, 252, 0.18)' }, // Purple
+  { stroke: '#fb7185', fill: 'rgba(251, 113, 133, 0.18)' }, // Rose
+  { stroke: '#2dd4bf', fill: 'rgba(45, 212, 191, 0.18)' },  // Teal
+  { stroke: '#fde047', fill: 'rgba(253, 224, 71, 0.18)' },  // Bright Yellow
 ];
 
 // Global cache for baseline golden reference waveforms
@@ -97,9 +97,10 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
 }) => {
   const [viewMode, setViewMode] = useState<'waveform' | 'schematic' | 'assertions' | 'text_trace'>('waveform');
   const [waveformSource, setWaveformSource] = useState<'simulated' | 'reference'>('simulated');
-  const [radix, setRadix] = useState<RadixFormat>('hex');
+  const [radix, setRadix] = useState<RadixFormat>('bin');
   const [enableBusGrouping, setEnableBusGrouping] = useState<boolean>(true);
-  const [collapsedBuses, setCollapsedBuses] = useState<Record<string, boolean>>({});
+  const [expandedBuses, setExpandedBuses] = useState<Record<string, boolean>>({});
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const [showSpecModal, setShowSpecModal] = useState<boolean>(false);
   const [showLiveStatusModal, setShowLiveStatusModal] = useState<boolean>(false);
   const [copiedAscii, setCopiedAscii] = useState<boolean>(false);
@@ -109,9 +110,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
   // Zoom control: zoom level in percentage (50%, 75%, 100%, 125%, 150%, 200%)
   const [zoomPercent, setZoomPercent] = useState<number>(100);
 
-  // Time cursor state in nanoseconds (defaults to 38ns or 95% of total time as seen in screenshot)
-  const [cursorNs, setCursorNs] = useState<number>(38);
+  // Dual time cursors state (Cursor A in red, Cursor B in cyan/amber for delta measurement)
+  const [activeCursor, setActiveCursor] = useState<'A' | 'B'>('A');
+  const [cursorANs, setCursorANs] = useState<number>(10);
+  const [cursorBNs, setCursorBNs] = useState<number>(30);
   const [isDraggingCursor, setIsDraggingCursor] = useState<boolean>(false);
+
+  const toggleExpandBus = useCallback((busId: string) => {
+    setExpandedBuses(prev => ({ ...prev, [busId]: !prev[busId] }));
+  }, []);
 
   const waveformContainerRef = useRef<HTMLDivElement>(null);
   const isComb = isCombinationalCircuit(problem);
@@ -286,46 +293,93 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
   const pixelsPerNs = STEP_WIDTH / CYCLE_NS;
   const totalWaveformWidth = Math.max(totalTimeNs * pixelsPerNs, 600);
 
-  // Keep cursor clamped within valid range
+  // Keep dual cursors clamped within valid range
   useEffect(() => {
-    if (cursorNs > totalTimeNs) {
-      setCursorNs(totalTimeNs);
+    if (cursorANs > totalTimeNs) {
+      setCursorANs(Math.min(10, totalTimeNs));
     }
-  }, [totalTimeNs, cursorNs]);
+    if (cursorBNs > totalTimeNs) {
+      setCursorBNs(Math.min(totalTimeNs, 30));
+    }
+  }, [totalTimeNs, cursorANs, cursorBNs]);
 
-  // Set default cursor to 38ns if 40ns total (matching user screenshot)
-  useEffect(() => {
-    if (totalTimeNs === 40 && cursorNs === 38) {
-      return;
-    }
-    if (cursorNs === 38 && totalTimeNs > 40) {
-      // keep 38ns
-    } else if (cursorNs === 0) {
-      setCursorNs(Math.min(38, totalTimeNs));
-    }
-  }, [totalTimeNs]);
-
-  // Dynamically resolve active signal list from simulation samples or config
+  // Dynamically resolve active signal list from simulation samples or config with STRICT DEDUPLICATION
   const activeSignalConfigs = useMemo<SignalConfig[]>(() => {
-    let resolved: SignalConfig[] = [];
+    let rawKeys: string[] = [];
+
+    // 1. Gather all observed signal keys
     if (samples && samples.length > 0 && samples[0]?.signals) {
-      const sampleKeys = Object.keys(samples[0].signals);
-      const existingMap = new Map((effectiveSignals || []).map(s => [s.name, s]));
-      resolved = sampleKeys.map(key => {
-        if (existingMap.has(key)) return existingMap.get(key)!;
-        const lower = key.toLowerCase();
-        let type: 'clock' | 'input' | 'output' | 'internal' = 'input';
-        if (lower.includes('clk') || lower.includes('clock') || lower.includes('sck') || lower.includes('scl')) type = 'clock';
-        else if (lower.includes('out') || lower.includes('sum') || lower.includes('cout') || lower.includes('q') || lower.includes('y') || lower.includes('dout')) type = 'output';
-        return {
-          name: key,
-          type,
-          initialValue: samples[0]?.signals?.[key] || '0'
-        };
+      Object.keys(samples[0].signals).forEach(k => {
+        if (!rawKeys.includes(k)) rawKeys.push(k);
       });
-    } else {
-      resolved = effectiveSignals || [];
     }
+
+    if (effectiveSignals && effectiveSignals.length > 0) {
+      effectiveSignals.forEach(s => {
+        if (!rawKeys.includes(s.name)) rawKeys.push(s.name);
+      });
+    }
+
+    if (rawKeys.length === 0) {
+      rawKeys = ['clk', 'in', 'out'];
+    }
+
+    // 2. Identify all multi-bit buses, e.g. "out[1:0]" or "din[3:0]"
+    const busEntries = rawKeys.filter(k => /\[\d+:\d+\]/.test(k));
+    const busBaseNames = new Set(busEntries.map(b => b.replace(/\[.*\]/, '').toLowerCase()));
+
+    // 3. Strict Deduplication:
+    // Drop unindexed aliases (e.g. drop bare "out" if "out[1:0]" exists, drop "in" if "in[3:0]" exists)
+    // Drop single bit aliases if the bus already exists (e.g. drop "out[0]" if "out[1:0]" exists)
+    const filteredKeys = rawKeys.filter(key => {
+      const isBare = /^[a-zA-Z_]\w*$/.test(key);
+      const isBitIndex = /^([a-zA-Z_]\w*)\[\d+\]$/.test(key);
+      const base = key.replace(/\[.*\]/, '').toLowerCase();
+
+      if (isBare && busBaseNames.has(base)) {
+        return false; // Redundant unindexed alias!
+      }
+      if (isBitIndex && busBaseNames.has(base)) {
+        return false; // Redundant individual bit already captured in bus!
+      }
+      return true;
+    });
+
+    // 4. Drop case-insensitive duplicate entries (e.g. keep "clk", drop "CLK")
+    const seenLower = new Set<string>();
+    const deduplicatedKeys = filteredKeys.filter(k => {
+      const lk = k.toLowerCase();
+      if (seenLower.has(lk)) return false;
+      seenLower.add(lk);
+      return true;
+    });
+
+    const existingMap = new Map((effectiveSignals || []).map(s => [s.name.toLowerCase(), s]));
+
+    let resolved: SignalConfig[] = deduplicatedKeys.map(key => {
+      const lower = key.toLowerCase();
+      if (existingMap.has(lower)) {
+        const existing = existingMap.get(lower)!;
+        return { ...existing, name: key };
+      }
+      let type: 'clock' | 'input' | 'output' | 'internal' = 'input';
+      if (lower.includes('clk') || lower.includes('clock') || lower.includes('sck') || lower.includes('scl')) type = 'clock';
+      else if (lower.includes('out') || lower.includes('sum') || lower.includes('cout') || lower.includes('q') || lower.includes('y') || lower.includes('dout')) type = 'output';
+      return {
+        name: key,
+        type,
+        initialValue: samples?.[0]?.signals?.[key] || '0'
+      };
+    });
+
+    // 5. Logical grouping order: Clocks -> Inputs -> Outputs -> Internal
+    const typeOrder = { clock: 0, input: 1, output: 2, internal: 3 };
+    resolved.sort((a, b) => {
+      const orderA = typeOrder[a.type] ?? 4;
+      const orderB = typeOrder[b.type] ?? 4;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
 
     if (isComb) {
       return resolved.filter(
@@ -344,150 +398,152 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
     }
   }, [simulationResult]);
 
-  // Group signals into buses and assign colors
+  // Group signals into buses and assign colors with expandable member bits
   const groupedSignalItems = useMemo<SignalGroupItem[]>(() => {
     const sigList = activeSignalConfigs || [];
-    let items: SignalGroupItem[] = [];
+    const items: SignalGroupItem[] = [];
 
-    if (!enableBusGrouping) {
-      items = sigList.map((sig, idx) => {
-        const busRangeMatch = sig.name.match(/^([a-zA-Z_]\w*)\[(\d+):(\d+)\]$/);
-        const isMultiBit = Boolean(busRangeMatch || (sig.initialValue && sig.initialValue.length > 1));
-        return {
-          id: sig.name,
-          displayName: sig.name,
-          type: sig.type,
-          isBusGroup: isMultiBit,
-          memberSignals: [sig],
-          color: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].stroke,
-          fillColor: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].fill
-        };
+    sigList.forEach((sig, idx) => {
+      if (!sig || !sig.name) return;
+      const busRangeMatch = sig.name.match(/^([a-zA-Z_]\w*)\[(\d+):(\d+)\]$/);
+      const isMultiBit = Boolean(busRangeMatch || (sig.initialValue && sig.initialValue.length > 1));
+
+      const memberSignals: SignalConfig[] = [];
+      if (busRangeMatch) {
+        const baseName = busRangeMatch[1];
+        const msb = parseInt(busRangeMatch[2], 10);
+        const lsb = parseInt(busRangeMatch[3], 10);
+        const step = msb >= lsb ? -1 : 1;
+        for (let bit = msb; msb >= lsb ? bit >= lsb : bit <= lsb; bit += step) {
+          memberSignals.push({
+            name: `${baseName}[${bit}]`,
+            type: sig.type,
+            initialValue: '0'
+          });
+        }
+      } else {
+        memberSignals.push(sig);
+      }
+
+      items.push({
+        id: sig.name,
+        displayName: sig.name,
+        type: sig.type,
+        isBusGroup: isMultiBit,
+        memberSignals,
+        color: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].stroke,
+        fillColor: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].fill
       });
+    });
+
+    return items;
+  }, [activeSignalConfigs]);
+
+  // Helper to extract bit width of a signal name (e.g. q[7:0] -> 8, data[3:0] -> 4, or scalar 1)
+  const getSignalBitWidth = useCallback((signalName: string): number => {
+    const busRangeMatch = signalName.match(/\[(\d+):(\d+)\]/);
+    if (busRangeMatch) {
+      return Math.abs(parseInt(busRangeMatch[1], 10) - parseInt(busRangeMatch[2], 10)) + 1;
+    }
+    const sigCfg = (activeSignalConfigs || []).find(s => s.name === signalName || s.name.replace(/\[.*\]/, '') === signalName);
+    if (sigCfg?.initialValue && sigCfg.initialValue.length > 1) {
+      return sigCfg.initialValue.length;
+    }
+    return 1;
+  }, [activeSignalConfigs]);
+
+  // Radix formatting helper (supporting 4-state 0, 1, X, Z logic with explicit binary conversion)
+  const formatRadix = useCallback((rawVal: string, fmt: RadixFormat, bitWidth: number = 1): string => {
+    if (!rawVal && rawVal !== '0') return bitWidth > 1 ? '0'.repeat(bitWidth) : '0';
+    const strVal = String(rawVal).trim();
+    if (/[xX]/.test(strVal)) return strVal.toUpperCase();
+    if (/[zZ]/.test(strVal)) return strVal.toUpperCase();
+
+    // Check if rawVal is a Verilog literal like 4'b1010, 8'hFF, 8'd42
+    let cleanBin = '';
+    const vMatch = strVal.match(/^(\d+)'([bBhHdD])([0-9a-fA-F_xXzZ]+)$/);
+    if (vMatch) {
+      const explicitWidth = parseInt(vMatch[1], 10) || bitWidth;
+      const base = vMatch[2].toLowerCase();
+      const numStr = vMatch[3].replace(/_/g, '');
+      if (base === 'b') {
+        cleanBin = numStr.padStart(explicitWidth, '0');
+      } else if (base === 'h') {
+        const n = parseInt(numStr, 16);
+        cleanBin = !isNaN(n) ? n.toString(2).padStart(explicitWidth, '0') : numStr;
+      } else if (base === 'd') {
+        const n = parseInt(numStr, 10);
+        cleanBin = !isNaN(n) ? n.toString(2).padStart(explicitWidth, '0') : numStr;
+      }
+    } else if (/^[01]+$/.test(strVal)) {
+      cleanBin = strVal;
+      if (bitWidth > 1 && cleanBin.length < bitWidth) {
+        cleanBin = cleanBin.padStart(bitWidth, '0');
+      }
+    } else if (/^\d+$/.test(strVal)) {
+      // Decimal integer string
+      const n = parseInt(strVal, 10);
+      cleanBin = n.toString(2);
+      if (bitWidth > 1) {
+        cleanBin = cleanBin.padStart(bitWidth, '0');
+      }
     } else {
-      const busMap = new Map<string, { baseName: string; type: 'input' | 'output' | 'clock' | 'internal'; signals: { sig: SignalConfig; index: number }[] }>();
-      const standaloneSignals: SignalGroupItem[] = [];
-
-      sigList.forEach(sig => {
-        if (!sig || !sig.name) return;
-        const busRangeMatch = sig.name.match(/^([a-zA-Z_]\w*)\[(\d+):(\d+)\]$/);
-        const isMultiBit = Boolean(busRangeMatch || (sig.initialValue && sig.initialValue.length > 1));
-        const bitMatch = sig.name.match(/^([a-zA-Z_]\w*)\[(\d+)\]$/) || sig.name.match(/^([a-zA-Z_]\w*)_(\d+)$/);
-
-        if (isMultiBit) {
-          standaloneSignals.push({
-            id: sig.name,
-            displayName: sig.name,
-            type: sig.type,
-            isBusGroup: true,
-            memberSignals: [sig],
-            color: '#38bdf8',
-            fillColor: 'rgba(56, 189, 248, 0.18)'
-          });
-        } else if (bitMatch) {
-          const baseName = bitMatch[1];
-          const index = parseInt(bitMatch[2], 10);
-          if (!busMap.has(baseName)) {
-            busMap.set(baseName, { baseName, type: sig.type, signals: [] });
-          }
-          busMap.get(baseName)!.signals.push({ sig, index });
-        } else {
-          standaloneSignals.push({
-            id: sig.name,
-            displayName: sig.name,
-            type: sig.type,
-            isBusGroup: false,
-            memberSignals: [sig],
-            color: '#38bdf8',
-            fillColor: 'rgba(56, 189, 248, 0.18)'
-          });
-        }
-      });
-
-      const busGroups: SignalGroupItem[] = [];
-      busMap.forEach(({ baseName, type, signals: memberSigs }) => {
-        if (memberSigs && memberSigs.length > 1) {
-          memberSigs.sort((a, b) => b.index - a.index);
-          const maxBit = memberSigs[0].index;
-          const minBit = memberSigs[memberSigs.length - 1].index;
-          const displayName = `${baseName}[${maxBit}:${minBit}]`;
-
-          busGroups.push({
-            id: displayName,
-            displayName,
-            type,
-            isBusGroup: true,
-            memberSignals: memberSigs.map(s => s.sig),
-            color: '#38bdf8',
-            fillColor: 'rgba(56, 189, 248, 0.18)'
-          });
-        } else if (memberSigs) {
-          memberSigs.forEach(s => {
-            if (s && s.sig) {
-              standaloneSignals.push({
-                id: s.sig.name,
-                displayName: s.sig.name,
-                type: s.sig.type,
-                isBusGroup: false,
-                memberSignals: [s.sig],
-                color: '#38bdf8',
-                fillColor: 'rgba(56, 189, 248, 0.18)'
-              });
-            }
-          });
-        }
-      });
-
-      items = [...standaloneSignals, ...busGroups];
+      cleanBin = strVal;
     }
 
-    // Assign colors from palette
-    return items.map((item, idx) => ({
-      ...item,
-      color: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].stroke,
-      fillColor: SIGNAL_PALETTE[idx % SIGNAL_PALETTE.length].fill
-    }));
-  }, [activeSignalConfigs, enableBusGrouping]);
-
-  // Radix formatting helper (supporting 4-state 0, 1, X, Z logic)
-  const formatRadix = useCallback((rawBinaryStr: string, fmt: RadixFormat) => {
-    if (!rawBinaryStr) return '0';
-    if (/[xX]/.test(rawBinaryStr)) return rawBinaryStr.toUpperCase();
-    if (/[zZ]/.test(rawBinaryStr)) return rawBinaryStr.toUpperCase();
-    const cleanBin = rawBinaryStr.replace(/^(\d+'[bBhHdD])/, '').replace(/[^0-1]/g, '');
-    if (!cleanBin) return rawBinaryStr;
-    const num = parseInt(cleanBin, 2);
-    if (isNaN(num)) return rawBinaryStr;
-
-    if (fmt === 'hex') {
-      const hexWidth = Math.max(1, Math.ceil(cleanBin.length / 4));
-      return num.toString(16).toUpperCase().padStart(hexWidth, '0');
-    } else if (fmt === 'dec') {
-      return `${num}`;
-    } else {
+    if (fmt === 'bin') {
+      // Clean binary representation formatted to width
+      if (bitWidth === 1 && cleanBin.length > 1) {
+        return cleanBin.slice(-1);
+      }
       return cleanBin;
+    } else if (fmt === 'hex') {
+      const n = parseInt(cleanBin, 2);
+      if (isNaN(n)) return cleanBin;
+      const hexWidth = Math.max(1, Math.ceil(cleanBin.length / 4));
+      return n.toString(16).toUpperCase().padStart(hexWidth, '0');
+    } else if (fmt === 'dec') {
+      const n = parseInt(cleanBin, 2);
+      if (isNaN(n)) return cleanBin;
+      return `${n}`;
     }
+    return cleanBin;
   }, []);
 
-  // Compute active sample at cursorNs
+  // Primary active cursor in nanoseconds
+  const primaryCursorNs = activeCursor === 'A' ? cursorANs : cursorBNs;
+
+  // Compute active sample at primary cursor
   const activeCycleIndex = Math.min(
     Math.max(0, samples.length - 1),
-    Math.floor(cursorNs / CYCLE_NS)
+    Math.floor(primaryCursorNs / CYCLE_NS)
   );
   const activeSampleAtCursor = samples[activeCycleIndex] || samples[0];
 
-  // Helper to get signal's instantaneous value at cursorNs
-  const getSignalValueAtCursor = useCallback((signalName: string): string => {
-    if (!activeSampleAtCursor) return '0';
-    const raw = getSampleSignalVal(activeSampleAtCursor, signalName);
-    if (raw.length <= 1 && !/^[0-9]+$/.test(raw)) return raw;
-    return formatRadix(raw, radix);
-  }, [activeSampleAtCursor, getSampleSignalVal, formatRadix, radix]);
+  // Helper to get signal's instantaneous value at a specified timestamp
+  const getSignalValueAtNs = useCallback((signalName: string, nsTime: number): string => {
+    if (!samples || samples.length === 0) return '0';
+    const cycleIndex = Math.min(
+      Math.max(0, samples.length - 1),
+      Math.floor(nsTime / CYCLE_NS)
+    );
+    const sample = samples[cycleIndex] || samples[0];
+    if (!sample) return '0';
+    const raw = getSampleSignalVal(sample, signalName);
+    const bitWidth = getSignalBitWidth(signalName);
+    return formatRadix(raw, radix, bitWidth);
+  }, [samples, getSampleSignalVal, formatRadix, radix, getSignalBitWidth]);
 
-  // Row heights and waveform coordinates matching screenshot
-  const ROW_HEIGHT = 44;
-  const Y_HIGH = 10;
-  const Y_LOW = 34;
-  const Y_MID = 22;
+  // Helper to get signal value at the primary active cursor
+  const getSignalValueAtCursor = useCallback((signalName: string): string => {
+    return getSignalValueAtNs(signalName, activeCursor === 'A' ? cursorANs : cursorBNs);
+  }, [getSignalValueAtNs, activeCursor, cursorANs, cursorBNs]);
+
+  // Row heights and waveform coordinates matching authentic EDA layout
+  const ROW_HEIGHT = 42;
+  const Y_HIGH = 9;
+  const Y_LOW = 33;
+  const Y_MID = 21;
 
   // Multi-bit Bus Segments calculation for authentic EDA hexagonal crossover envelopes
   interface BusSegment {
@@ -503,6 +559,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
 
   const getBusSegments = useCallback((signalName: string): BusSegment[] => {
     if (!samples || samples.length === 0) return [];
+    const bitWidth = getSignalBitWidth(signalName);
     const segments: BusSegment[] = [];
     let currentSegment: BusSegment | null = null;
 
@@ -523,7 +580,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
           xStart,
           xEnd,
           value: val,
-          formattedValue: formatRadix(val, radix),
+          formattedValue: formatRadix(val, radix, bitWidth),
           isUnknown,
           isHighZ
         };
@@ -537,7 +594,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
       segments.push(currentSegment);
     }
     return segments;
-  }, [samples, getSampleSignalVal, STEP_WIDTH, formatRadix, radix]);
+  }, [samples, getSampleSignalVal, STEP_WIDTH, formatRadix, radix, getSignalBitWidth]);
 
   // Build waveform path for single-bit signal with 4-state (0, 1, X, Z) support
   const getSignalWaveformPath = useCallback((signalName: string) => {
@@ -596,17 +653,27 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
     return { path: pathStr, fillPath: fillPathStr, unknownBoxes, zLines };
   }, [samples, getSampleSignalVal, STEP_WIDTH]);
 
-  // Handle click or drag on the waveform or timeline ruler to move cursor
-  const handlePointerDownTimeline = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDraggingCursor(true);
-    handlePointerMoveTimeline(e);
-  };
-
-  const handlePointerMoveTimeline = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Handle click or drag on the waveform or timeline ruler to move active cursor (Cursor A or Cursor B)
+  const updateCursorFromEvent = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const computedNs = Math.max(0, Math.min(totalTimeNs, Math.round(clickX / pixelsPerNs)));
-    setCursorNs(computedNs);
+    if (e.shiftKey || activeCursor === 'B') {
+      setCursorBNs(computedNs);
+    } else {
+      setCursorANs(computedNs);
+    }
+  }, [totalTimeNs, pixelsPerNs, activeCursor]);
+
+  const handlePointerDownTimeline = (e: React.MouseEvent<HTMLDivElement>) => {
+    setIsDraggingCursor(true);
+    updateCursorFromEvent(e);
+  };
+
+  const handlePointerMoveTimeline = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDraggingCursor) {
+      updateCursorFromEvent(e);
+    }
   };
 
   const handlePointerUpTimeline = () => {
@@ -646,33 +713,36 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
     return ticks;
   }, [totalTimeNs, pixelsPerNs]);
 
-  const cursorX = cursorNs * pixelsPerNs;
+  const cursorAX = cursorANs * pixelsPerNs;
+  const cursorBX = cursorBNs * pixelsPerNs;
+  const deltaTNs = Math.abs(cursorBNs - cursorANs);
+  const freqMHz = deltaTNs > 0 ? (1000 / deltaTNs).toFixed(1) : '---';
 
   return (
-    <div className="h-full flex flex-col bg-[#0b0e17] text-[#f1f3f7] font-mono text-xs overflow-hidden select-none">
+    <div className="h-full flex flex-col bg-[#0a0b0e] text-[#eff1f6] font-mono text-xs overflow-hidden select-none">
       
       {/* =========================================================================
-          TOP TOOLBAR (IDENTICAL TO SCREENSHOT SPECIFICATION)
-          WAVEFORM ... 3 signals | [-] 100% [+] [⊡] | T=38ns | 40ns
+          TOP TOOLBAR (BLACK & YELLOW THEME)
+          WAVEFORM ... 3 signals | BIN | HEX | DEC | [-] 100% [+] [⊡] | T=38ns | 40ns
       ========================================================================= */}
-      <div className="h-11 px-4 bg-[#0d111e] border-b border-[#1c2236] flex items-center justify-between shrink-0 shadow-sm z-20">
+      <div className="h-11 px-4 bg-[#111217] border-b border-[#22242f] flex items-center justify-between shrink-0 shadow-sm z-20">
         
         {/* Left Side: Title & Mode Switcher */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-[#38bdf8] font-bold text-xs font-mono tracking-[0.2em] uppercase">
+            <span className="text-[#e5a93c] font-black text-xs font-mono tracking-[0.2em] uppercase">
               WAVEFORM
             </span>
           </div>
 
           {/* Quick Tabs: Waveform | Schematic | Truth Table | Text Trace */}
-          <div className="flex items-center gap-0.5 bg-[#121727] p-0.5 rounded-lg border border-[#1e2538] text-[11px]">
+          <div className="flex items-center gap-0.5 bg-[#14151b] p-0.5 rounded-lg border border-[#22242f] text-[11px]">
             <button
               onClick={() => setViewMode('waveform')}
               className={`h-6 px-2.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'waveform'
-                  ? 'bg-[#38bdf8] text-[#080b12] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Activity className="w-3 h-3" />
@@ -683,8 +753,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
               onClick={() => setViewMode('schematic')}
               className={`h-6 px-2.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'schematic'
-                  ? 'bg-[#38bdf8] text-[#080b12] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Cpu className="w-3 h-3" />
@@ -695,8 +765,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
               onClick={() => setViewMode('assertions')}
               className={`h-6 px-2.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'assertions'
-                  ? 'bg-[#38bdf8] text-[#080b12] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Table className="w-3 h-3" />
@@ -712,8 +782,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
               onClick={() => setViewMode('text_trace')}
               className={`h-6 px-2.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'text_trace'
-                  ? 'bg-[#38bdf8] text-[#080b12] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <FileText className="w-3 h-3" />
@@ -726,20 +796,20 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
         <div className="flex items-center gap-3 text-xs font-mono">
           
           {/* Signal Count */}
-          <span className="text-slate-400 text-[11px] font-medium hidden sm:inline">
+          <span className="text-zinc-400 text-[11px] font-medium hidden sm:inline">
             {groupedSignalItems.length} signals
           </span>
 
-          {/* Radix Format Selector: HEX | DEC | BIN */}
-          <div className="flex items-center gap-0.5 bg-[#121727] p-0.5 rounded-md border border-[#1e2538] text-[10px]">
-            {(['hex', 'dec', 'bin'] as RadixFormat[]).map(fmt => (
+          {/* Radix Format Selector: BIN | HEX | DEC */}
+          <div className="flex items-center gap-0.5 bg-[#14151b] p-0.5 rounded-md border border-[#22242f] text-[10px]">
+            {(['bin', 'hex', 'dec'] as RadixFormat[]).map(fmt => (
               <button
                 key={fmt}
                 onClick={() => setRadix(fmt)}
                 className={`px-1.5 py-0.5 rounded uppercase font-bold transition-all cursor-pointer ${
                   radix === fmt
-                    ? 'bg-[#38bdf8] text-[#080b12]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
                 title={`Display multi-bit vectors in ${fmt.toUpperCase()}`}
               >
@@ -748,14 +818,14 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
             ))}
           </div>
 
-          <span className="text-slate-700 hidden sm:inline">|</span>
+          <span className="text-zinc-600 hidden sm:inline">|</span>
 
           {/* Zoom Controls: [-] 100% [+] [⊡] */}
           {viewMode === 'waveform' && (
             <div className="flex items-center gap-1">
               <button
                 onClick={handleZoomOut}
-                className="w-6 h-6 rounded bg-[#121727] hover:bg-[#1a2238] border border-[#1e2538] text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                className="w-6 h-6 rounded bg-[#14151b] hover:bg-[#181920] border border-[#22242f] text-zinc-300 hover:text-[#e5a93c] flex items-center justify-center transition-all cursor-pointer"
                 title="Zoom Out Waveform"
               >
                 <span className="font-bold text-xs">-</span>
@@ -783,17 +853,41 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
             </div>
           )}
 
-          <span className="text-slate-700">|</span>
+          <span className="text-zinc-600 hidden md:inline">|</span>
 
-          {/* Cursor Time Indicator (T=38ns | 40ns with red highlight) */}
-          <div className="flex items-center gap-1 text-[11px] font-mono">
-            <span className="text-[#f43f5e] font-bold">
-              T={cursorNs}ns
+          {/* Dual Cursor Measurement Bar: Cursor A (Red), Cursor B (Cyan), Delta T (Amber) & Frequency */}
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#14151b] border border-[#22242f] text-[11px] font-mono">
+            <button
+              onClick={() => setActiveCursor('A')}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                activeCursor === 'A'
+                  ? 'bg-[#ef4444] text-white shadow-sm ring-1 ring-[#ef4444]'
+                  : 'text-[#ef4444] hover:bg-[#ef4444]/15'
+              }`}
+              title="Select Cursor A (Click timeline to reposition)"
+            >
+              A: {cursorANs}ns
+            </button>
+            <button
+              onClick={() => setActiveCursor('B')}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                activeCursor === 'B'
+                  ? 'bg-[#38bdf8] text-black shadow-sm ring-1 ring-[#38bdf8]'
+                  : 'text-[#38bdf8] hover:bg-[#38bdf8]/15'
+              }`}
+              title="Select Cursor B (Shift+Click or Click to reposition)"
+            >
+              B: {cursorBNs}ns
+            </button>
+            <span className="text-zinc-600">|</span>
+            <span className="text-[#e5a93c] font-bold">
+              ΔT={deltaTNs}ns
             </span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-400">
-              {totalTimeNs}ns
-            </span>
+            {deltaTNs > 0 && (
+              <span className="text-zinc-400 hidden xl:inline text-[10px]">
+                ({freqMHz} MHz)
+              </span>
+            )}
           </div>
 
           {/* Golden Reference vs DUT Toggle */}
@@ -835,13 +929,27 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
 
           {/* Window Mode Controls (Split / Lift / Full) */}
           {onToggleWindowMode && (
-            <div className="flex items-center gap-0.5 bg-[#121727] p-0.5 rounded-md border border-[#1e2538]">
+            <div className="flex items-center gap-1 bg-[#14151b] p-0.5 rounded-lg border border-[#22242f]">
               <button
                 onClick={() => onToggleWindowMode(windowMode === 'full' ? 'split' : 'full')}
-                className="w-6 h-6 rounded hover:bg-[#1a2238] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-                title={windowMode === 'full' ? 'Restore Split View' : 'Maximize Waveform Window'}
+                className={`h-6 px-2 rounded text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  windowMode === 'full'
+                    ? 'bg-[#e5a93c] text-black font-black shadow-sm'
+                    : 'text-zinc-300 hover:text-white hover:bg-[#1a1b22]'
+                }`}
+                title={windowMode === 'full' ? 'Restore Split View' : 'Maximize Waveform Window (Full Canvas)'}
               >
-                {windowMode === 'full' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                {windowMode === 'full' ? (
+                  <>
+                    <Minimize2 className="w-3 h-3 text-black" />
+                    <span className="hidden sm:inline">Restore</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="w-3 h-3 text-[#e5a93c]" />
+                    <span className="hidden sm:inline">Maximize</span>
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -948,12 +1056,12 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
                 {/* -------------------------------------------------------------
                     TOP TIME RULER AXIS (0ns, 5ns, 10ns, 15ns, 20ns, ..., 40ns)
                 ------------------------------------------------------------- */}
-                <div className="flex items-center h-9 border-b border-[#1c2236] bg-[#0d111e] sticky top-0 z-10 select-none">
+                <div className="flex items-center h-9 border-b border-[#22242f] bg-[#111217] sticky top-0 z-10 select-none">
                   
                   {/* Left Header Spacer */}
-                  <div className="w-48 shrink-0 px-4 flex items-center justify-between border-r border-[#1c2236] text-[10px] text-slate-500 font-mono tracking-wider font-semibold">
+                  <div className="w-48 shrink-0 px-4 flex items-center justify-between border-r border-[#22242f] text-[10px] text-zinc-400 font-mono tracking-wider font-semibold">
                     <span>SIGNAL</span>
-                    <span>VALUE</span>
+                    <span className="text-[#e5a93c]">VALUE (BIN)</span>
                   </div>
 
                   {/* Ruler Axis Area with Clickable / Draggable Red Cursor Badge */}
@@ -972,18 +1080,18 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
                             y1={tick.isMajor ? 14 : 20}
                             x2={tick.x}
                             y2={36}
-                            stroke={tick.isMajor ? '#475569' : '#1e293b'}
+                            stroke={tick.isMajor ? '#e5a93c' : '#22242f'}
                             strokeWidth={1}
                           />
                           {tick.isMajor && (
                             <text
                               x={tick.x}
                               y={11}
-                              fill="#64748b"
+                              fill="#e5a93c"
                               fontSize={10}
                               fontFamily="monospace"
                               textAnchor="middle"
-                              fontWeight="500"
+                              fontWeight="600"
                             >
                               {tick.ns}ns
                             </text>
@@ -1004,13 +1112,24 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
                       ))}
                     </svg>
 
-                    {/* Red/Rose Cursor Badge (38ns) positioned directly above vertical cursor */}
+                    {/* Dual Cursor Badges on Timeline Ruler */}
+                    {/* Cursor A Badge (Red) */}
                     <div 
-                      style={{ left: `${cursorX}px` }}
+                      style={{ left: `${cursorAX}px` }}
                       className="absolute -top-0.5 -translate-x-1/2 z-20 pointer-events-none transition-all duration-75"
                     >
                       <div className="bg-[#ef4444] text-white text-[10px] font-bold font-mono px-1.5 py-0.5 rounded shadow-lg flex items-center justify-center">
-                        {cursorNs}ns
+                        A: {cursorANs}ns
+                      </div>
+                    </div>
+
+                    {/* Cursor B Badge (Cyan) */}
+                    <div 
+                      style={{ left: `${cursorBX}px` }}
+                      className="absolute -top-0.5 -translate-x-1/2 z-20 pointer-events-none transition-all duration-75"
+                    >
+                      <div className="bg-[#38bdf8] text-black text-[10px] font-bold font-mono px-1.5 py-0.5 rounded shadow-lg flex items-center justify-center">
+                        B: {cursorBNs}ns
                       </div>
                     </div>
                   </div>
@@ -1019,236 +1138,364 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
 
                 {/* -------------------------------------------------------------
                     SIGNAL ROWS CONTAINER
-                    Left column: signal name + live value + colored dot
+                    Left column: expand button + signal name + tag + live value
                     Right column: digital waveform trace with shaded high fill
                 ------------------------------------------------------------- */}
                 <div className="flex-1 relative">
                   
-                  {groupedSignalItems.map((group, rowIdx) => {
-                    const signalVal = getSignalValueAtCursor(group.displayName);
+                  {groupedSignalItems.map((group) => {
+                    const signalValA = getSignalValueAtNs(group.displayName, cursorANs);
+                    const signalValB = getSignalValueAtNs(group.displayName, cursorBNs);
                     const waveData = getSignalWaveformPath(group.displayName);
-                    const isOutput = group.type === 'output' || group.displayName.toLowerCase().includes('out') || group.displayName.toLowerCase() === 'y';
+                    const isExpanded = Boolean(expandedBuses[group.id]);
+                    const isSelected = selectedSignalId === group.id;
 
                     return (
-                      <div 
-                        key={group.id}
-                        className="flex items-center h-11 border-b border-[#141927] hover:bg-[#0f1422] transition-colors relative group"
-                      >
-                        {/* Left Signal Column: Name + Live Value + Color Dot */}
-                        <div className="w-48 shrink-0 h-full px-4 flex items-center justify-between border-r border-[#1c2236] bg-[#0b0e17] group-hover:bg-[#0f1422] transition-colors z-10">
-                          {/* Signal Name */}
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="font-mono text-xs text-slate-300 font-medium truncate">
-                              {group.displayName}
-                            </span>
-                            {isOutput && (
-                              <span className="text-[10px] text-slate-500 font-normal">
-                                (out)
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Signal Value at Cursor + Colored Dot */}
-                          <div className="flex items-center gap-1.5 shrink-0 pl-2">
-                            <span 
-                              style={{ color: group.color }}
-                              className="font-mono text-xs font-bold"
-                            >
-                              {signalVal}
-                            </span>
-                            {/* Dot matching signal trace color */}
-                            <span 
-                              style={{ backgroundColor: group.color }}
-                              className="w-2 h-2 rounded-full inline-block shadow-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Right Waveform Trace Area */}
+                      <React.Fragment key={group.id}>
+                        {/* Main Signal Row */}
                         <div 
-                          className="flex-1 h-full relative cursor-crosshair"
-                          onMouseDown={handlePointerDownTimeline}
-                          onMouseMove={isDraggingCursor ? handlePointerMoveTimeline : undefined}
-                          onMouseUp={handlePointerUpTimeline}
+                          onClick={() => setSelectedSignalId(isSelected ? null : group.id)}
+                          className={`flex items-center h-11 border-b border-[#22242f] transition-colors relative group cursor-pointer ${
+                            isSelected ? 'bg-[#181922] border-l-2 border-l-[#e5a93c]' : 'hover:bg-[#14151b]'
+                          }`}
                         >
-                          <svg width={totalWaveformWidth} height={ROW_HEIGHT} className="block overflow-visible">
+                          {/* Left Signal Column: Name + Live Value + Color Dot */}
+                          <div className="w-48 shrink-0 h-full px-3 flex items-center justify-between border-r border-[#22242f] bg-[#0a0b0e] group-hover:bg-[#121319] transition-colors z-10">
                             
-                            {/* Vertical guide lines at each 5ns step */}
-                            {timelineTicks.map(tick => (
-                              <line
-                                key={tick.ns}
-                                x1={tick.x}
-                                y1={0}
-                                x2={tick.x}
-                                y2={ROW_HEIGHT}
-                                stroke="#141926"
-                                strokeDasharray="2,3"
-                                strokeWidth={1}
+                            {/* Expand Chevron + Signal Name + Pill Badge */}
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {group.isBusGroup ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpandBus(group.id);
+                                  }}
+                                  className="p-0.5 rounded hover:bg-[#22242f] text-zinc-400 hover:text-[#e5a93c] transition-colors cursor-pointer shrink-0"
+                                  title={isExpanded ? 'Collapse bus' : 'Expand bus bits'}
+                                >
+                                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-150 ${isExpanded ? 'rotate-90 text-[#e5a93c]' : ''}`} />
+                                </button>
+                              ) : (
+                                <span className="w-4 shrink-0" />
+                              )}
+
+                              <span className="font-mono text-xs text-zinc-200 font-medium truncate" title={group.displayName}>
+                                {group.displayName}
+                              </span>
+
+                              {/* Authentic Clean EDA Port Pill Tag */}
+                              {group.type === 'output' ? (
+                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/15 text-[#e5a93c] border border-[#e5a93c]/30 font-bold uppercase shrink-0">
+                                  OUT
+                                </span>
+                              ) : group.type === 'clock' ? (
+                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold uppercase shrink-0">
+                                  CLK
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold uppercase shrink-0">
+                                  IN
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Dual Cursor Signal Values + Color Dot */}
+                            <div className="flex items-center gap-1.5 shrink-0 pl-1 font-mono text-xs">
+                              <span 
+                                style={{ color: group.color }}
+                                className="font-bold"
+                                title={`Value at Cursor A (${cursorANs}ns)`}
+                              >
+                                {signalValA}
+                              </span>
+                              <span className="text-zinc-600 text-[10px]">|</span>
+                              <span 
+                                className="text-sky-400 font-semibold text-[11px]"
+                                title={`Value at Cursor B (${cursorBNs}ns)`}
+                              >
+                                {signalValB}
+                              </span>
+                              <span 
+                                style={{ backgroundColor: group.color }}
+                                className="w-2 h-2 rounded-full inline-block shadow-sm ml-0.5 shrink-0"
                               />
-                            ))}
+                            </div>
+                          </div>
 
-                            {group.isBusGroup ? (
-                              /* Multi-Bit Vector Signal (Bus Envelope with centered radix-formatted value) */
-                              <g>
-                                {getBusSegments(group.displayName).map((seg, sIdx) => {
-                                  const segWidth = seg.xEnd - seg.xStart;
-                                  const crossW = Math.min(5, Math.max(2, segWidth / 5));
+                          {/* Right Waveform Trace Area */}
+                          <div 
+                            className="flex-1 h-full relative cursor-crosshair"
+                            onMouseDown={handlePointerDownTimeline}
+                            onMouseMove={isDraggingCursor ? handlePointerMoveTimeline : undefined}
+                            onMouseUp={handlePointerUpTimeline}
+                          >
+                            <svg width={totalWaveformWidth} height={ROW_HEIGHT} className="block overflow-visible">
+                              
+                              {/* Vertical guide lines at each 5ns step */}
+                              {timelineTicks.map(tick => (
+                                <line
+                                  key={tick.ns}
+                                  x1={tick.x}
+                                  y1={0}
+                                  x2={tick.x}
+                                  y2={ROW_HEIGHT}
+                                  stroke="#181920"
+                                  strokeDasharray="2,3"
+                                  strokeWidth={1}
+                                />
+                              ))}
 
-                                  if (seg.isHighZ) {
+                              {group.isBusGroup ? (
+                                /* Multi-Bit Vector Signal (Bus Envelope with centered radix-formatted value) */
+                                <g>
+                                  {getBusSegments(group.displayName).map((seg, sIdx) => {
+                                    const segWidth = seg.xEnd - seg.xStart;
+                                    const crossW = Math.min(5, Math.max(2, segWidth / 5));
+
+                                    if (seg.isHighZ) {
+                                      return (
+                                        <g key={sIdx}>
+                                          <line
+                                            x1={seg.xStart}
+                                            y1={Y_MID}
+                                            x2={seg.xEnd}
+                                            y2={Y_MID}
+                                            stroke="#94a3b8"
+                                            strokeDasharray="3,2"
+                                            strokeWidth={1.5}
+                                          />
+                                          {segWidth >= 20 && (
+                                            <text
+                                              x={(seg.xStart + seg.xEnd) / 2}
+                                              y={Y_MID - 4}
+                                              fill="#94a3b8"
+                                              fontSize={9}
+                                              fontFamily="monospace"
+                                              textAnchor="middle"
+                                            >
+                                              Hi-Z
+                                            </text>
+                                          )}
+                                        </g>
+                                      );
+                                    }
+
+                                    const isUnknown = seg.isUnknown;
+                                    const strokeColor = isUnknown ? '#ef4444' : group.color;
+                                    const fillColor = isUnknown ? 'rgba(239, 68, 68, 0.28)' : group.fillColor;
+
+                                    const leftX = seg.startIndex === 0 ? seg.xStart : seg.xStart + crossW;
+                                    const rightX = seg.endIndex >= samples.length ? seg.xEnd : seg.xEnd - crossW;
+
+                                    let hexPath = '';
+                                    if (seg.startIndex === 0) {
+                                      hexPath = `M ${seg.xStart} ${Y_HIGH} L ${rightX} ${Y_HIGH}`;
+                                    } else {
+                                      hexPath = `M ${seg.xStart} ${Y_MID} L ${leftX} ${Y_HIGH} L ${rightX} ${Y_HIGH}`;
+                                    }
+
+                                    if (seg.endIndex >= samples.length) {
+                                      hexPath += ` L ${seg.xEnd} ${Y_LOW} L ${leftX} ${Y_LOW}`;
+                                    } else {
+                                      hexPath += ` L ${seg.xEnd} ${Y_MID} L ${rightX} ${Y_LOW} L ${leftX} ${Y_LOW}`;
+                                    }
+
+                                    if (seg.startIndex === 0) {
+                                      hexPath += ` L ${seg.xStart} ${Y_LOW} Z`;
+                                    } else {
+                                      hexPath += ` L ${seg.xStart} ${Y_MID} Z`;
+                                    }
+
                                     return (
                                       <g key={sIdx}>
-                                        <line
-                                          x1={seg.xStart}
-                                          y1={Y_MID}
-                                          x2={seg.xEnd}
-                                          y2={Y_MID}
-                                          stroke="#94a3b8"
-                                          strokeDasharray="3,2"
-                                          strokeWidth={1.5}
-                                        />
-                                        {segWidth >= 20 && (
+                                        {/* Shaded Bus Envelope Fill */}
+                                        <path d={hexPath} fill={fillColor} />
+                                        {/* Bus Envelope Dual-Line Borders */}
+                                        <path d={hexPath} fill="none" stroke={strokeColor} strokeWidth={1.5} strokeLinejoin="round" />
+                                        {/* Formatted Bus Value centered inside cell */}
+                                        {segWidth >= 22 && (
                                           <text
                                             x={(seg.xStart + seg.xEnd) / 2}
-                                            y={Y_MID - 4}
-                                            fill="#94a3b8"
-                                            fontSize={9}
+                                            y={26}
+                                            fill={isUnknown ? '#fca5a5' : '#f1f5f9'}
+                                            fontSize={10}
+                                            fontWeight="600"
                                             fontFamily="monospace"
                                             textAnchor="middle"
                                           >
-                                            Hi-Z
+                                            {seg.formattedValue}
                                           </text>
                                         )}
                                       </g>
                                     );
-                                  }
+                                  })}
+                                </g>
+                              ) : (
+                                /* Single-Bit Digital Trace with 4-state (0, 1, X, Z) */
+                                <g>
+                                  {waveData.fillPath && (
+                                    <path 
+                                      d={waveData.fillPath} 
+                                      fill={group.fillColor} 
+                                    />
+                                  )}
 
-                                  const isUnknown = seg.isUnknown;
-                                  const strokeColor = isUnknown ? '#ef4444' : group.color;
-                                  const fillColor = isUnknown ? 'rgba(239, 68, 68, 0.28)' : group.fillColor;
-
-                                  const leftX = seg.startIndex === 0 ? seg.xStart : seg.xStart + crossW;
-                                  const rightX = seg.endIndex >= samples.length ? seg.xEnd : seg.xEnd - crossW;
-
-                                  let hexPath = '';
-                                  if (seg.startIndex === 0) {
-                                    hexPath = `M ${seg.xStart} ${Y_HIGH} L ${rightX} ${Y_HIGH}`;
-                                  } else {
-                                    hexPath = `M ${seg.xStart} ${Y_MID} L ${leftX} ${Y_HIGH} L ${rightX} ${Y_HIGH}`;
-                                  }
-
-                                  if (seg.endIndex >= samples.length) {
-                                    hexPath += ` L ${seg.xEnd} ${Y_LOW} L ${leftX} ${Y_LOW}`;
-                                  } else {
-                                    hexPath += ` L ${seg.xEnd} ${Y_MID} L ${rightX} ${Y_LOW} L ${leftX} ${Y_LOW}`;
-                                  }
-
-                                  if (seg.startIndex === 0) {
-                                    hexPath += ` L ${seg.xStart} ${Y_LOW} Z`;
-                                  } else {
-                                    hexPath += ` L ${seg.xStart} ${Y_MID} Z`;
-                                  }
-
-                                  return (
-                                    <g key={sIdx}>
-                                      {/* Shaded Bus Envelope Fill */}
-                                      <path d={hexPath} fill={fillColor} />
-                                      {/* Bus Envelope Dual-Line Borders */}
-                                      <path d={hexPath} fill="none" stroke={strokeColor} strokeWidth={1.5} strokeLinejoin="round" />
-                                      {/* Formatted Bus Value centered inside cell */}
-                                      {segWidth >= 22 && (
-                                        <text
-                                          x={(seg.xStart + seg.xEnd) / 2}
-                                          y={26}
-                                          fill={isUnknown ? '#fca5a5' : '#f1f5f9'}
-                                          fontSize={10}
-                                          fontWeight="600"
-                                          fontFamily="monospace"
-                                          textAnchor="middle"
-                                        >
-                                          {seg.formattedValue}
-                                        </text>
-                                      )}
+                                  {waveData.unknownBoxes && waveData.unknownBoxes.map((box, bIdx) => (
+                                    <g key={`unk-${bIdx}`}>
+                                      <rect
+                                        x={box.xStart}
+                                        y={Y_HIGH}
+                                        width={box.xEnd - box.xStart}
+                                        height={Y_LOW - Y_HIGH}
+                                        fill="rgba(239, 68, 68, 0.25)"
+                                        stroke="#ef4444"
+                                        strokeWidth={1.5}
+                                      />
+                                      <text
+                                        x={(box.xStart + box.xEnd) / 2}
+                                        y={26}
+                                        fill="#fca5a5"
+                                        fontSize={10}
+                                        fontWeight="bold"
+                                        fontFamily="monospace"
+                                        textAnchor="middle"
+                                      >
+                                        X
+                                      </text>
                                     </g>
-                                  );
-                                })}
-                              </g>
-                            ) : (
-                              /* Single-Bit Digital Trace with 4-state (0, 1, X, Z) */
-                              <g>
-                                {waveData.fillPath && (
-                                  <path 
-                                    d={waveData.fillPath} 
-                                    fill={group.fillColor} 
-                                  />
-                                )}
+                                  ))}
 
-                                {waveData.unknownBoxes && waveData.unknownBoxes.map((box, bIdx) => (
-                                  <g key={`unk-${bIdx}`}>
-                                    <rect
-                                      x={box.xStart}
-                                      y={Y_HIGH}
-                                      width={box.xEnd - box.xStart}
-                                      height={Y_LOW - Y_HIGH}
-                                      fill="rgba(239, 68, 68, 0.25)"
-                                      stroke="#ef4444"
+                                  {waveData.zLines && waveData.zLines.map((z, zIdx) => (
+                                    <line
+                                      key={`z-${zIdx}`}
+                                      x1={z.xStart}
+                                      y1={Y_MID}
+                                      x2={z.xEnd}
+                                      y2={Y_MID}
+                                      stroke="#94a3b8"
+                                      strokeDasharray="3,2"
                                       strokeWidth={1.5}
                                     />
-                                    <text
-                                      x={(box.xStart + box.xEnd) / 2}
-                                      y={26}
-                                      fill="#fca5a5"
-                                      fontSize={10}
-                                      fontWeight="bold"
-                                      fontFamily="monospace"
-                                      textAnchor="middle"
-                                    >
-                                      X
-                                    </text>
-                                  </g>
-                                ))}
+                                  ))}
 
-                                {waveData.zLines && waveData.zLines.map((z, zIdx) => (
-                                  <line
-                                    key={`z-${zIdx}`}
-                                    x1={z.xStart}
-                                    y1={Y_MID}
-                                    x2={z.xEnd}
-                                    y2={Y_MID}
-                                    stroke="#94a3b8"
-                                    strokeDasharray="3,2"
-                                    strokeWidth={1.5}
+                                  <path
+                                    d={waveData.path}
+                                    fill="none"
+                                    stroke={group.color}
+                                    strokeWidth={2}
+                                    strokeLinecap="square"
+                                    strokeLinejoin="miter"
                                   />
-                                ))}
-
-                                <path
-                                  d={waveData.path}
-                                  fill="none"
-                                  stroke={group.color}
-                                  strokeWidth={2}
-                                  strokeLinecap="square"
-                                  strokeLinejoin="miter"
-                                />
-                              </g>
-                            )}
-                          </svg>
+                                </g>
+                              )}
+                            </svg>
+                          </div>
                         </div>
-                      </div>
+
+                        {/* Expanded Individual Bit Sub-Rows */}
+                        {group.isBusGroup && isExpanded && group.memberSignals.map((subSig) => {
+                          const subValA = getSignalValueAtNs(subSig.name, cursorANs);
+                          const subValB = getSignalValueAtNs(subSig.name, cursorBNs);
+                          const subWave = getSignalWaveformPath(subSig.name);
+
+                          return (
+                            <div 
+                              key={subSig.name}
+                              className="flex items-center h-8 border-b border-[#1c1d26] bg-[#07080b] hover:bg-[#121319] transition-colors relative"
+                            >
+                              <div className="w-48 shrink-0 h-full pl-7 pr-3 flex items-center justify-between border-r border-[#22242f]">
+                                <span className="font-mono text-[11px] text-zinc-400 font-medium truncate">
+                                  ↳ {subSig.name}
+                                </span>
+                                <div className="flex items-center gap-1 font-mono text-[11px]">
+                                  <span style={{ color: group.color }} className="font-bold">
+                                    {subValA}
+                                  </span>
+                                  <span className="text-zinc-600 text-[9px]">|</span>
+                                  <span className="text-sky-400 text-[10px]">
+                                    {subValB}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div 
+                                className="flex-1 h-full relative cursor-crosshair"
+                                onMouseDown={handlePointerDownTimeline}
+                                onMouseMove={isDraggingCursor ? handlePointerMoveTimeline : undefined}
+                                onMouseUp={handlePointerUpTimeline}
+                              >
+                                <svg width={totalWaveformWidth} height={32} className="block overflow-visible">
+                                  {timelineTicks.map(tick => (
+                                    <line
+                                      key={tick.ns}
+                                      x1={tick.x}
+                                      y1={0}
+                                      x2={tick.x}
+                                      y2={32}
+                                      stroke="#14151b"
+                                      strokeDasharray="2,3"
+                                      strokeWidth={1}
+                                    />
+                                  ))}
+                                  {subWave.fillPath && (
+                                    <path d={subWave.fillPath} fill={group.fillColor} />
+                                  )}
+                                  <path
+                                    d={subWave.path}
+                                    fill="none"
+                                    stroke={group.color}
+                                    strokeWidth={1.5}
+                                    strokeLinecap="square"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
 
                   {/* -------------------------------------------------------------
-                      VERTICAL RED DASHED CURSOR LINE
-                      Spanning the entire height through all signal rows
+                      TRANSLUCENT DELTA MEASUREMENT REGION
+                      Between Cursor A and Cursor B
                   ------------------------------------------------------------- */}
                   <div 
                     style={{ 
-                      left: `${cursorX + 192}px`, // 192px = w-48 left label column width
+                      left: `${Math.min(cursorAX, cursorBX) + 192}px`,
+                      width: `${Math.abs(cursorBX - cursorAX)}px`,
                       top: 0,
                       bottom: 0
                     }}
-                    className="absolute w-px pointer-events-none z-10 transition-all duration-75"
+                    className="absolute pointer-events-none z-10 bg-[#e5a93c]/5 border-x border-[#e5a93c]/20"
+                  />
+
+                  {/* -------------------------------------------------------------
+                      VERTICAL CURSOR A LINE (RED)
+                  ------------------------------------------------------------- */}
+                  <div 
+                    style={{ 
+                      left: `${cursorAX + 192}px`,
+                      top: 0,
+                      bottom: 0
+                    }}
+                    className="absolute w-px pointer-events-none z-20 transition-all duration-75"
                   >
                     <div className="w-full h-full border-l border-dashed border-[#ef4444] opacity-90" />
+                  </div>
+
+                  {/* -------------------------------------------------------------
+                      VERTICAL CURSOR B LINE (CYAN)
+                  ------------------------------------------------------------- */}
+                  <div 
+                    style={{ 
+                      left: `${cursorBX + 192}px`,
+                      top: 0,
+                      bottom: 0
+                    }}
+                    className="absolute w-px pointer-events-none z-20 transition-all duration-75"
+                  >
+                    <div className="w-full h-full border-l border-dashed border-[#38bdf8] opacity-90" />
                   </div>
 
                 </div>
@@ -1332,7 +1579,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
             onForceSignal={onForceSignal}
             selectedCycle={activeCycleIndex}
             totalCycles={samples.length}
-            onSelectCycle={(cycle) => setCursorNs(cycle * CYCLE_NS)}
+            onSelectCycle={(cycle) => setCursorANs(cycle * CYCLE_NS)}
             onDownloadSvg={() => {
               if (problem) {
                 downloadCircuitAsSvg(problem, activeSampleAtCursor, effectiveSignals);
@@ -1422,7 +1669,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
                       <tr 
                         key={idx}
                         onClick={() => {
-                          setCursorNs(vec.cycle * CYCLE_NS);
+                          setCursorANs(vec.cycle * CYCLE_NS);
                           setViewMode('waveform');
                         }}
                         className="hover:bg-[#151c2e] cursor-pointer transition-colors"
@@ -1585,8 +1832,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = memo(({
                 <span className="text-white font-bold">{groupedSignalItems.length} ports</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#161c2e]">
-                <span className="text-slate-400">Cursor Position:</span>
-                <span className="text-[#f43f5e] font-bold">T={cursorNs}ns</span>
+                <span className="text-slate-400">Cursor Positions:</span>
+                <span className="text-[#f43f5e] font-bold">A={cursorANs}ns, B={cursorBNs}ns (ΔT={deltaTNs}ns)</span>
               </div>
             </div>
 

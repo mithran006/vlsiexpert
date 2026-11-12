@@ -1209,83 +1209,85 @@ export const ProblemStatement: React.FC<ProblemStatementProps> = ({
               </div>
             )}
 
-            {/* 3 Modeling Styles Post-Execution Guidance */}
-            <div className="space-y-3">
-              <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#e5a93c]" />
-                <span>Hints for All 3 Hardware Modeling Styles:</span>
-              </div>
+            {/* 3 Modeling Styles Post-Execution Guidance - STRICTLY ONLY FOR HDL TOPICS */}
+            {isHdlTopic(problem.topic) && (
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#e5a93c]" />
+                  <span>Hints for All 3 Hardware Modeling Styles:</span>
+                </div>
 
-              {/* Modeling Styles Tabs */}
-              <div className="grid grid-cols-3 gap-1 p-1 bg-[#16171d] rounded-xl border border-[#262833]">
-                {(['structural', 'dataflow', 'behavioral'] as ModelingStyle[]).map((styleKey) => {
-                  const isSelected = selectedHintModelingStyle === styleKey;
-                  const isDetected = allModelingHints.detectedStyle === styleKey;
+                {/* Modeling Styles Tabs */}
+                <div className="grid grid-cols-3 gap-1 p-1 bg-[#16171d] rounded-xl border border-[#262833]">
+                  {(['structural', 'dataflow', 'behavioral'] as ModelingStyle[]).map((styleKey) => {
+                    const isSelected = selectedHintModelingStyle === styleKey;
+                    const isDetected = allModelingHints.detectedStyle === styleKey;
+                    return (
+                      <button
+                        key={styleKey}
+                        onClick={() => setSelectedHintModelingStyle(styleKey)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#e5a93c] text-[#111215] shadow-md font-bold'
+                            : 'text-[#9da3b4] hover:text-white hover:bg-[#1f212a]'
+                        }`}
+                      >
+                        <span className="capitalize">{styleKey}</span>
+                        {isDetected && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-slate-900' : 'bg-amber-400'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Active Style Hint Card */}
+                {(() => {
+                  const hintObj = allModelingHints.hints[selectedHintModelingStyle];
+                  if (!hintObj) return null;
                   return (
-                    <button
-                      key={styleKey}
-                      onClick={() => setSelectedHintModelingStyle(styleKey)}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all select-none cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#e5a93c] text-[#111215] shadow-md font-bold'
-                          : 'text-[#9da3b4] hover:text-white hover:bg-[#1f212a]'
-                      }`}
-                    >
-                      <span className="capitalize">{styleKey}</span>
-                      {isDetected && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-slate-900' : 'bg-amber-400'}`} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Active Style Hint Card */}
-              {(() => {
-                const hintObj = allModelingHints.hints[selectedHintModelingStyle];
-                if (!hintObj) return null;
-                return (
-                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">
-                          {hintObj.label}
-                        </span>
-                        {hintObj.isCurrentStyle && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                            Active DUT
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-sm">
+                            {hintObj.label}
                           </span>
+                          {hintObj.isCurrentStyle && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                              Active DUT
+                            </span>
+                          )}
+                        </div>
+                        {onLoadModelingTemplate && (
+                          <button
+                            onClick={() => {
+                              onLoadModelingTemplate(selectedHintModelingStyle);
+                              onSelectModelingStyle?.(selectedHintModelingStyle);
+                            }}
+                            className="px-2 py-1 rounded bg-[#191a21] hover:bg-[#222430] text-amber-300 border border-[#2b2d39] text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            Try in Editor
+                          </button>
                         )}
                       </div>
-                      {onLoadModelingTemplate && (
-                        <button
-                          onClick={() => {
-                            onLoadModelingTemplate(selectedHintModelingStyle);
-                            onSelectModelingStyle?.(selectedHintModelingStyle);
-                          }}
-                          className="px-2 py-1 rounded bg-[#191a21] hover:bg-[#222430] text-amber-300 border border-[#2b2d39] text-[10px] font-bold transition-all cursor-pointer"
-                        >
-                          Try in Editor
-                        </button>
-                      )}
-                    </div>
 
-                    <p className="text-slate-300 leading-relaxed text-xs">
-                      {hintObj.guidance}
-                    </p>
+                      <p className="text-slate-300 leading-relaxed text-xs">
+                        {hintObj.guidance}
+                      </p>
 
-                    <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 whitespace-pre-wrap">
-                      {hintObj.syntaxSnippet}
-                    </div>
+                      <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 whitespace-pre-wrap">
+                        {hintObj.syntaxSnippet}
+                      </div>
 
-                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                      <span><strong>Synthesis Insight:</strong> {hintObj.synthesisTip}</span>
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                        <span><strong>Synthesis Insight:</strong> {hintObj.synthesisTip}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
-            </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Standard Problem Reference Hints */}
             {problem.hints && problem.hints.length > 0 && (

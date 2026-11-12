@@ -1590,6 +1590,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onChange={(e) => setIqCompanyId(e.target.value)}
                     className="w-full h-9 px-3 rounded-lg bg-[#181920] border border-[#2b2d39] text-xs text-white focus:outline-none focus:border-[#e5a93c]"
                   >
+                    <option value="openai">OpenAI Hardware & Infrastructure</option>
+                    <option value="meta_ai">Meta AI (FAIR & MTIA Silicon)</option>
+                    <option value="anthropic">Anthropic AI Systems</option>
+                    <option value="alibaba">Alibaba Cloud & T-Head Silicon</option>
+                    <option value="github">GitHub (Copilot & AI Systems)</option>
                     <option value="samsung">Samsung Semiconductor</option>
                     <option value="qualcomm">Qualcomm Snapdragon</option>
                     <option value="intel">Intel Corporation</option>

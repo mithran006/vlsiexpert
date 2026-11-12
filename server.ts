@@ -159,7 +159,7 @@ async function startServer() {
     }
   }
 
-  // Helper to retrieve user progress from SQL DB
+  // Helper to retrieve user progress from SQL DB with permanent persistence
   function getUserProgressFromDb(userId: string) {
     try {
       const stmt = db.prepare("SELECT * FROM progress WHERE user_id = ?");
@@ -170,11 +170,36 @@ async function startServer() {
       }
       stmt.free();
 
+      // Retrieve all Accepted solves from the permanent submissions table for this user
+      let acceptedSolves: string[] = [];
+      let latestCodes: Record<string, string> = {};
+      try {
+        const subStmt = db.prepare(
+          "SELECT problem_id, code FROM submissions WHERE user_id = ? AND status = 'Accepted' ORDER BY id ASC"
+        );
+        subStmt.bind([userId]);
+        while (subStmt.step()) {
+          const row = subStmt.getAsObject();
+          if (row.problem_id) {
+            const pId = String(row.problem_id);
+            if (!acceptedSolves.includes(pId)) {
+              acceptedSolves.push(pId);
+            }
+            if (row.code) {
+              latestCodes[pId] = String(row.code);
+            }
+          }
+        }
+        subStmt.free();
+      } catch (err) {
+        console.warn("Could not query submissions for user progress:", err);
+      }
+
       if (!progressRow) {
         return {
           userId,
-          solvedProblemIds: [],
-          savedCode: {},
+          solvedProblemIds: acceptedSolves,
+          savedCode: latestCodes,
           bookmarks: [],
           notes: {},
           streakDays: 1,
@@ -183,14 +208,21 @@ async function startServer() {
           dailyAttempts: {},
           dailySolved: {},
           hourlyActivity: {},
-          unlockedBadgeIds: []
+          unlockedBadgeIds: acceptedSolves.length > 0 ? ['first_solve'] : []
         };
       }
 
+      const dbSolvedIds = safeJsonParse<string[]>(progressRow.solved_ids, []);
+      // Merge unique solved IDs from progress row and submissions
+      const mergedSolvedIds = Array.from(new Set([...dbSolvedIds, ...acceptedSolves]));
+
+      const dbSavedCode = safeJsonParse<Record<string, string>>(progressRow.saved_code_json, {});
+      const mergedSavedCode = { ...latestCodes, ...dbSavedCode };
+
       return {
         userId,
-        solvedProblemIds: safeJsonParse<string[]>(progressRow.solved_ids, []),
-        savedCode: safeJsonParse<Record<string, string>>(progressRow.saved_code_json, {}),
+        solvedProblemIds: mergedSolvedIds,
+        savedCode: mergedSavedCode,
         bookmarks: safeJsonParse<string[]>(progressRow.bookmarks_json, []),
         notes: safeJsonParse<Record<string, string>>(progressRow.notes_json, {}),
         streakDays: Number(progressRow.streak_days || 1),
@@ -905,12 +937,12 @@ async function startServer() {
 
       const isVlsiExpertAdmin = /^vlsiexpert00[1-4]@gmail\.com$/.test(emailTrim);
       const isAuthorizedFounderOrMentor = [
-        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'shimona'
+        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'mithran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'shimona'
       ].some(k => emailTrim.includes(k));
 
       if (!isVlsiExpertAdmin && !isAuthorizedFounderOrMentor) {
         return res.status(403).json({
-          error: "Access Denied: Only authorized administrators (vlsiexpert001 to 004) and PSNACET VLSI Founders/Mentors have access to Admin Panel."
+          error: "Access Denied: Only authorized administrators (vlsiexpert001 to 004) and PSNACET VLSI Engineering Personnel have access to Admin Panel."
         });
       }
 
@@ -924,9 +956,12 @@ async function startServer() {
         success: true,
         token: sessionToken,
         user: {
+          id: `admin_${emailTrim}`,
           email: emailTrim,
           name: adminName,
-          role: "ADMINISTRATOR"
+          role: "admin",
+          isGuest: false,
+          selectedTrack: "both"
         }
       });
     } catch (e: any) {
@@ -2151,12 +2186,15 @@ Instead, follow the exact workflow of authentic industrial VLSI coding and linti
       // If Gemini is available, ground with Google Search for supplementary live insights
       let geminiArticles: any[] = [];
       let webSearchQueries: string[] = [
+        "Frontier AI companies OpenAI Anthropic Google DeepMind xAI Meta NVIDIA releases 2026",
         "VLSI design ASIC tapeout EDA Synopsys Cadence news 2026",
         "Embedded systems STM32 ESP32 FreeRTOS microcontrollers 2026",
         "Robotics humanoid robots Boston Dynamics ROS2 autonomous systems 2026",
         "TSMC 2nm GAA Intel 18A ASML semiconductor news"
       ];
       let groundingSources: any[] = [
+        { title: "OpenAI & DeepMind Research Wire", url: "https://openai.com/news" },
+        { title: "Anthropic Research News", url: "https://www.anthropic.com/news" },
         { title: "Semiconductor Engineering (VLSI & EDA)", url: "https://semiengineering.com/" },
         { title: "Embedded.com (Microcontrollers & RTOS)", url: "https://www.embedded.com/" },
         { title: "IEEE Spectrum Robotics Wire", url: "https://spectrum.ieee.org/robotics" },
@@ -2169,10 +2207,10 @@ Instead, follow the exact workflow of authentic industrial VLSI coding and linti
         try {
           const ai = new GoogleGenAI({ apiKey });
           const searchContext = query.trim()
-            ? `Find live breaking tech news on: "${query.trim()}". Cover VLSI design, embedded systems, microcontrollers, or robotics.`
-            : `Find breaking 2026 live news across: 1) VLSI & EDA design (Synopsys, Cadence, ASIC tapeouts), 2) Embedded Systems (ARM Cortex, STM32, ESP32, FreeRTOS), 3) Robotics (humanoid robots, ROS2, Boston Dynamics, Unitree), and 4) Leading-edge Silicon (TSMC 2nm, Intel 18A).`;
+            ? `Find live breaking tech news on: "${query.trim()}". Cover frontier AI companies (OpenAI, Google DeepMind, Anthropic, NVIDIA, Meta AI, xAI, Mistral), VLSI design, embedded systems, microcontrollers, or robotics.`
+            : `Find breaking 2026 live news across: 1) Frontier AI companies (OpenAI o3, Google DeepMind Gemini, Anthropic Claude 3.7, NVIDIA Blackwell, Meta Llama 4, xAI Grok 3), 2) VLSI & EDA design (Synopsys, Cadence, ASIC tapeouts), 3) Embedded Systems (ARM Cortex, STM32, ESP32, FreeRTOS), 4) Robotics (humanoid robots, ROS2, Boston Dynamics, Unitree), and 5) Leading-edge Silicon (TSMC 2nm, Intel 18A).`;
 
-          const prompt = `Use Google Search to find real-world, breaking tech news in VLSI, EMBEDDED SYSTEMS, ROBOTICS, and ADVANCED SEMICONDUCTORS.
+          const prompt = `Use Google Search to find real-world, breaking tech news in FRONTIER AI COMPANIES, VLSI, EMBEDDED SYSTEMS, ROBOTICS, and ADVANCED SEMICONDUCTORS.
 ${searchContext}
 
 Return a valid JSON object ONLY with:

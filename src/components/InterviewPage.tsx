@@ -27,7 +27,7 @@ interface MockRoundResult {
 export const InterviewPage: React.FC<InterviewPageProps> = ({ userName, onBackToDashboard, onTriggerAntiCopy }) => {
   // Navigation & Mode
   const [activeTab, setActiveTab] = useState<'bank' | 'mock'>('bank');
-  const [selectedCompanyId, setSelectedCompanyId] = useState<CompanyInfo['id']>('siemens');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<CompanyInfo['id']>('openai');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [activeQuestion, setActiveQuestion] = useState<InterviewQuestion | null>(null);
@@ -341,7 +341,7 @@ Format output clearly with "Score: XX/100" and concise bullet points.`
                 </h1>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                {INTERVIEW_QUESTIONS.length}+ Authentic Interview & Exam Questions • Qualcomm, Broadcom, ARM, TI, GATE VLSI, Synopsys, Tata Elxsi, Siemens, TSMC & NVIDIA
+                {INTERVIEW_QUESTIONS.length}+ Authentic Interview & Exam Questions • OpenAI, Meta AI, Anthropic, Alibaba, GitHub, Qualcomm, Broadcom, ARM, TI, GATE VLSI, Synopsys, TSMC & NVIDIA
               </p>
             </div>
           </div>

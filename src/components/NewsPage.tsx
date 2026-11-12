@@ -309,6 +309,7 @@ ArticleCard.displayName = 'ArticleCard';
 // ---------------------------------------------------------------------------
 const GOOGLE_TECH_PRESETS = [
   { id: 'all', label: 'All Live Wire', topic: 'all', query: '' },
+  { id: 'ai_companies', label: '🤖 Frontier AI Companies', topic: 'ai_companies', query: 'OpenAI Google DeepMind Anthropic NVIDIA xAI Meta AI Mistral' },
   { id: 'vlsi', label: '🔬 VLSI & EDA Silicon', topic: 'vlsi', query: '' },
   { id: 'embedded', label: '⚡ Embedded Systems & MCUs', topic: 'embedded', query: '' },
   { id: 'robotics', label: '🤖 Robotics & Autonomous', topic: 'robotics', query: '' },
@@ -644,8 +645,12 @@ export const NewsPage: React.FC<NewsPageProps> = memo(() => {
         const isRobotics = article.category === 'robotics';
         const hasRoboticsText = /robot|humanoid|quadruped|manipulat|ros2|ros\s+2|actuator|kinematics|spot|atlas|unitree|autonomous|slam/i.test(article.title + ' ' + article.summary + ' ' + (article.tags || []).join(' '));
         if (!isRobotics && !hasRoboticsText) return false;
+      } else if (selectedCategory === 'ai_companies') {
+        const isAiCategory = article.category === 'ai_companies' || article.category === 'ai_creation';
+        const isAiBrand = /openai|google\s*deepmind|deepmind|anthropic|nvidia|meta|microsoft|xai|grok|mistral|deepseek|cerebras|groq|amd\s*ai/i.test(article.company + ' ' + (article.tags || []).join(' ') + ' ' + article.title);
+        if (!isAiCategory && !isAiBrand) return false;
       } else if (selectedCategory === 'ai_creation') {
-        const isAiCat = article.category === 'ai_creation';
+        const isAiCat = article.category === 'ai_creation' || article.category === 'ai_companies';
         const hasAiTags = article.tags?.some(t => /ai|llm|moe|deepseek|groq|cerebras|reasoning|creation|transformer|neural/i.test(t));
         const hasAiText = /ai|llm|deepseek|cerebras|groq|reasoning|moe|model|generation|agent/i.test(article.title + ' ' + article.summary);
         if (!isAiCat && !hasAiTags && !hasAiText) return false;

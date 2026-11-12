@@ -542,9 +542,9 @@ function seedInitialNewsDiscussions(database: Database) {
         id: 'ndisc_4',
         articleId: 'cerebras_cs3_wafer',
         articleTitle: 'Cerebras CS-3 Wafer-Scale Engine 3: 4 Trillion Transistors',
-        userId: 'usr_mitran',
-        userName: 'Mitran B (RTL Architect)',
-        userAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=MitranB',
+        userId: 'usr_mithran',
+        userName: 'Mithran B (RTL Architect)',
+        userAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=MithranB',
         title: 'Wafer-scale interconnect latency compared to InfiniBand/NVLink clusters',
         content: 'Keeping 44GB of on-chip SRAM on a single contiguous silicon wafer yields 21 Petabytes/sec of memory bandwidth. The latency between adjacent cores is mere nanoseconds rather than microseconds across optical switches.',
         upvotes: 31,
@@ -1048,7 +1048,7 @@ function seedAdminInterviews(database: Database) {
   try {
     const res = database.exec("SELECT COUNT(*) FROM admin_interviews");
     const count = Number((res[0]?.values as any)?.[0]?.[0] || 0);
-    if (count > 0) return;
+    if (count >= INTERVIEW_QUESTIONS.length) return;
 
     console.log(`Seeding ${INTERVIEW_QUESTIONS.length} curated interview questions into admin_interviews...`);
     const now = new Date().toISOString();

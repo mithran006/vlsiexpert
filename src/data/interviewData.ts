@@ -1,8 +1,14 @@
 import { NEW_COMPANIES_QUESTIONS } from './interview/qualcommBroadcomArmQuestions';
 import { GATE_VLSI_QUESTIONS } from './interview/gateQuestionsBank';
 import { SAMSUNG_QUESTIONS } from './interview/samsungQuestions';
+import { AI_COMPANIES_QUESTIONS } from './interview/aiCompaniesQuestions';
 
 export type CompanyId = 
+  | 'openai'
+  | 'meta_ai'
+  | 'anthropic'
+  | 'alibaba'
+  | 'github'
   | 'samsung'
   | 'synopsys' 
   | 'tata_elxsi' 
@@ -42,6 +48,46 @@ export interface CompanyInfo {
 }
 
 export const COMPANIES: CompanyInfo[] = [
+  {
+    id: 'openai',
+    name: 'OpenAI Hardware & Infrastructure',
+    tagline: 'Custom AI Accelerator Silicon, Stargate Supercomputing Cluster, Triton GPU Kernels & KV-Cache Interconnects',
+    focusDomains: ['Custom AI Inference Silicon & TPU/GPU Co-Design', 'Stargate Multi-GW AI Datacenter Architecture', 'Triton FlashAttention & PagedAttention Kernels', 'Ultra-High Throughput KV-Cache Memory Fabric', 'FP8 / FP4 Quantization & Speculative Decoding Hardware', 'RDMA over Converged Ethernet (RoCEv2) Scale-Up Fabric'],
+    color: 'from-emerald-700 via-teal-800 to-cyan-900',
+    questionCount: 40
+  },
+  {
+    id: 'meta_ai',
+    name: 'Meta AI (FAIR & MTIA Silicon)',
+    tagline: 'MTIA v2 (Meta Training & Inference Accelerator), Grand Teton AI Servers, PyTorch 2.0 Hardware Dispatch & RoCE Fabrics',
+    focusDomains: ['MTIA v2 Custom RISC-V Neural Processing Units (NPUs)', 'Grand Teton Open Compute Project (OCP) AI Platform', 'Llama 3 Multi-Token Hardware Architecture', 'Distributed All-Reduce / All-to-All Optical Topologies', 'PyTorch TorchDynamo & Inductor Hardware Backends', 'Sub-8-Bit Microscaling (MXFP4/MXFP6) Formats'],
+    color: 'from-blue-700 via-sky-800 to-indigo-900',
+    questionCount: 40
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic AI Systems',
+    tagline: 'Claude Frontier Model Infrastructure, Constitutional AI Mechanistic Interpretability Circuits & Trainium/Inferentia Clusters',
+    focusDomains: ['Mechanistic Interpretability & Monosemantic Sparse Autoencoders', 'AWS Trainium2 & Inferentia NeuronCore Accelerator Integration', 'Long-Context (1M+ Token) RingAttention Memory Architectures', 'High-Density Liquid-Cooled Rack Packaging (100kW+)', 'Fault-Tolerant Distributed Checkpointing & Checkpoint Silos', 'Model Parallelism (Tensor, Pipeline, and 3D Parallelism)'],
+    color: 'from-amber-700 via-orange-800 to-yellow-900',
+    questionCount: 40
+  },
+  {
+    id: 'alibaba',
+    name: 'Alibaba Cloud & T-Head Silicon',
+    tagline: 'Hanguang 800 NPU, XuanTie Open-Source RISC-V Cores, Zhenwu AI Clusters & Yitian 710 Arm Server Silicon',
+    focusDomains: ['T-Head XuanTie C908 / C920 Vector Extension RISC-V Cores', 'Hanguang 800 Cloud NPU Systolic Matrix Engines', 'Yitian 710 128-Core Armv9 Cloud Server SoCs', 'Panjiu Liquid-Cooled AI Supercomputing Pods', 'Qwen 2.5 Multi-Modal Low-Precision Tensor Accelerators', 'E-Commerce Ultra-Low Latency RecSys Custom ASICs'],
+    color: 'from-orange-600 via-amber-700 to-red-800',
+    questionCount: 40
+  },
+  {
+    id: 'github',
+    name: 'GitHub (Copilot & AI Systems)',
+    tagline: 'Copilot Inference Runtime, Low-Latency Real-Time Token Generation, Code Llama / GPT-4o Hardware Serving & Multi-Tenant Isolation',
+    focusDomains: ['Copilot Sub-15ms Time-To-First-Token (TTFT) Hardware Pipelines', 'Multi-Tenant GPU Virtualization (MIG & MPS Slicing)', 'Dynamic Continuous Batching (vLLM / TGI Hardware Engines)', 'AST & Tree-Sitter Hardware Pre-Processing Acceleration', 'Confidential Computing & Hardware Enclaves (AMD SEV-SNP / Intel TDX)', 'Secure Enterprise Air-Gapped Appliance Silicon'],
+    color: 'from-purple-700 via-slate-800 to-zinc-900',
+    questionCount: 40
+  },
   {
     id: 'samsung',
     name: 'Samsung Semiconductor',
@@ -851,6 +897,7 @@ const generateTessolveQuestions = (): InterviewQuestion[] => [
 ];
 
 export const INTERVIEW_QUESTIONS: InterviewQuestion[] = [
+  ...AI_COMPANIES_QUESTIONS,
   ...SAMSUNG_QUESTIONS,
   ...NEW_COMPANIES_QUESTIONS,
   ...GATE_VLSI_QUESTIONS,
