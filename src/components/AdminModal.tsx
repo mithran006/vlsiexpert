@@ -30,7 +30,7 @@ const AUTHORIZED_ADMINS = [
   { name: 'MOHAMMED SUHAIL', designation: 'Interactive EDA Simulation & Software Stack', defaultEmail: 'mohammedsuhail@psnacet.edu.in' },
   { name: 'THILUCK', designation: 'SystemVerilog, UVM & Hardware Verification', defaultEmail: 'thiluck@psnacet.edu.in' },
   { name: 'BOOMIKA', designation: 'FPGA Architecture & Silicon Engineering', defaultEmail: 'boomika@psnacet.edu.in' },
-  { name: 'BASHA DHARAANYA', designation: 'Digital Circuit Synthesis & Hardware Logic', defaultEmail: 'bashadharaanya@psnacet.edu.in' },
+  { name: 'BASHA DHAARENYA', designation: 'Digital Circuit Synthesis & Hardware Logic', defaultEmail: 'bashadhaarenya@psnacet.edu.in' },
   { name: 'MARY SHIMONA', designation: 'Embedded Systems & AI Silicon Architecture', defaultEmail: 'maryshimona@psnacet.edu.in' }
 ];
 
@@ -157,6 +157,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         : (result.user?.name || emailTrim);
       setLoginSuccessUser(currentMemberName);
       setAdminPassword('');
+
+      if (onAdminLoginSuccess) {
+        onAdminLoginSuccess(result.user || {
+          id: `admin_${emailTrim.replace(/[^a-z0-9]/gi, '_')}`,
+          name: currentMemberName,
+          email: emailTrim,
+          role: 'admin',
+          isGuest: false
+        }, result.token);
+      }
     } catch (err: any) {
       setLoginError(err.message || "Admin authorization failed.");
     } finally {
@@ -459,6 +469,26 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                {onAdminLoginSuccess && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const emailTrim = adminEmail.trim().toLowerCase() || 'vlsiexpert001@gmail.com';
+                      onAdminLoginSuccess({
+                        id: `admin_${emailTrim.replace(/[^a-z0-9]/gi, '_')}`,
+                        name: loginSuccessUser || 'VLSI Expert Admin',
+                        email: emailTrim,
+                        role: 'admin',
+                        isGuest: false
+                      }, adminToken);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[#e5a93c] hover:bg-[#d99b2e] text-[#111215] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Open Admin Dashboard</span>
+                  </button>
+                )}
+
                 {activeTab === 'add' && (
                   <button
                     type="button"

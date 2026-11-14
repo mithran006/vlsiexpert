@@ -33,6 +33,7 @@ interface AuthModalProps {
   onUserAuthSuccess?: (user: UserProfile, progress: UserProgress) => void;
   onExportDB?: () => void;
   onImportDB?: () => void;
+  onOpenAdmin?: () => void;
   promptMessage?: string | null;
 }
 
@@ -42,6 +43,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUser,
   onSaveUser,
   onUserAuthSuccess,
+  onOpenAdmin,
   promptMessage
 }) => {
   // Active Tab: 'login' | 'register' | 'guest' | 'forgot' | 'profile'
@@ -1066,6 +1068,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
           </form>
+        )}
+
+        {onOpenAdmin && (
+          <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Faculty or Platform Administrator?</span>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenAdmin();
+              }}
+              className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Login</span>
+            </button>
+          </div>
         )}
 
       </div>

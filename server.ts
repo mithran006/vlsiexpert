@@ -650,7 +650,7 @@ async function startServer() {
       const normalizedEmail = email.trim().toLowerCase();
       const isAdminEmail = /^vlsiexpert00[1-4]@gmail\.com$/.test(normalizedEmail);
       const isAuthorizedFounderOrMentor = [
-        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'shimona'
+        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'mithran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'dhaarenya', 'shimona'
       ].some(k => normalizedEmail.includes(k));
 
       const master1 = process.env.ADMIN_PASSWORD || "vlsidevelop";
@@ -849,61 +849,121 @@ async function startServer() {
     }
   });
 
-  // Sync User Profile & Progress into SQL DB
+  // Sync User Profile & Progress into SQL DB (Non-destructive merge to prevent progress loss)
   app.post("/api/db/sync-user", (req, res) => {
     try {
       const { user, progress } = req.body;
-      if (user && user.id) {
-        // Check if user exists to preserve password_hash & salt
-        const checkStmt = db.prepare("SELECT password_hash, salt FROM users WHERE id = ?");
-        checkStmt.bind([user.id]);
-        let existingHash = null;
-        let existingSalt = null;
+      const now = new Date().toISOString();
+
+      if (user && user.id && !String(user.id).startsWith('guest-') && !String(user.id).startsWith('guest_')) {
+        const checkStmt = db.prepare("SELECT * FROM users WHERE id = ? OR LOWER(email) = LOWER(?)");
+        checkStmt.bind([user.id, user.email || '']);
+        let existingUser: any = null;
         if (checkStmt.step()) {
-          const row = checkStmt.getAsObject();
-          existingHash = row.password_hash;
-          existingSalt = row.salt;
+          existingUser = checkStmt.getAsObject();
         }
         checkStmt.free();
 
-        db.run(
-          `INSERT OR REPLACE INTO users (id, name, email, password_hash, salt, role, department, year_of_study, college_name, selected_track, created_at, last_login)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            user.id,
-            user.name || 'Student',
-            user.email || 'student@psnacet.edu.in',
-            existingHash,
-            existingSalt,
-            user.role || 'student',
-            user.department || 'ECE - Electronics & Communication',
-            user.yearOfStudy || '3rd Year',
-            user.collegeName || 'PSNA College of Engineering and Technology',
-            user.selectedTrack || 'both',
-            user.createdAt || new Date().toISOString(),
-            new Date().toISOString()
-          ]
-        );
+        if (existingUser) {
+          // Never allow client sync to escalate role to admin; preserve DB role
+          db.run(
+            `UPDATE users SET name = ?, department = ?, year_of_study = ?, college_name = ?, selected_track = ?, last_login = ?, updated_at = ? WHERE id = ?`,
+            [
+              user.name || existingUser.name,
+              user.department || existingUser.department,
+              user.yearOfStudy || existingUser.year_of_study,
+              user.collegeName || existingUser.college_name,
+              user.selectedTrack || existingUser.selected_track,
+              now,
+              now,
+              existingUser.id
+            ]
+          );
+        } else {
+          db.run(
+            `INSERT INTO users (id, name, email, role, department, year_of_study, college_name, selected_track, created_at, last_login, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              user.id,
+              user.name || 'Student',
+              user.email || 'student@psnacet.edu.in',
+              'student',
+              user.department || 'ECE - Electronics & Communication',
+              user.yearOfStudy || '3rd Year',
+              user.collegeName || 'PSNA College of Engineering and Technology',
+              user.selectedTrack || 'both',
+              user.createdAt || now,
+              now,
+              now
+            ]
+          );
+        }
       }
 
-      if (progress && progress.userId) {
+      if (progress && progress.userId && !String(progress.userId).startsWith('guest-') && !String(progress.userId).startsWith('guest_')) {
+        const existingProgStmt = db.prepare("SELECT * FROM progress WHERE user_id = ?");
+        existingProgStmt.bind([progress.userId]);
+        let existingProg: any = null;
+        if (existingProgStmt.step()) {
+          existingProg = existingProgStmt.getAsObject();
+        }
+        existingProgStmt.free();
+
+        const incomingSolved: string[] = Array.isArray(progress.solvedProblemIds) ? progress.solvedProblemIds : [];
+        const existingSolved: string[] = existingProg ? safeJsonParse<string[]>(existingProg.solved_ids, []) : [];
+        const mergedSolved = Array.from(new Set([...existingSolved, ...incomingSolved]));
+
+        const existingSavedCode = existingProg ? safeJsonParse<Record<string, string>>(existingProg.saved_code_json, {}) : {};
+        const mergedSavedCode = { ...existingSavedCode, ...(progress.savedCode || {}) };
+
+        const existingBookmarks = existingProg ? safeJsonParse<string[]>(existingProg.bookmarks_json, []) : [];
+        const mergedBookmarks = progress.bookmarks !== undefined ? progress.bookmarks : existingBookmarks;
+
+        const existingNotes = existingProg ? safeJsonParse<Record<string, string>>(existingProg.notes_json, {}) : {};
+        const mergedNotes = { ...existingNotes, ...(progress.notes || {}) };
+
+        const existingDailyAttempts = existingProg ? safeJsonParse<Record<string, number>>(existingProg.daily_attempts_json, {}) : {};
+        const mergedDailyAttempts: Record<string, number> = { ...existingDailyAttempts };
+        for (const [k, v] of Object.entries(progress.dailyAttempts || {})) {
+          mergedDailyAttempts[k] = Math.max(Number(mergedDailyAttempts[k] || 0), Number(v || 0));
+        }
+
+        const existingDailySolved = existingProg ? safeJsonParse<Record<string, number>>(existingProg.daily_solved_json, {}) : {};
+        const mergedDailySolved: Record<string, number> = { ...existingDailySolved };
+        for (const [k, v] of Object.entries(progress.dailySolved || {})) {
+          mergedDailySolved[k] = Math.max(Number(mergedDailySolved[k] || 0), Number(v || 0));
+        }
+
+        const existingHourly = existingProg ? safeJsonParse<Record<string, number>>(existingProg.hourly_activity_json, {}) : {};
+        const mergedHourly: Record<string, number> = { ...existingHourly };
+        for (const [k, v] of Object.entries(progress.hourlyActivity || {})) {
+          mergedHourly[k] = Math.max(Number(mergedHourly[k] || 0), Number(v || 0));
+        }
+
+        const existingBadges = existingProg ? safeJsonParse<string[]>(existingProg.unlocked_badge_ids_json, []) : [];
+        const mergedBadges = Array.from(new Set([...existingBadges, ...(Array.isArray(progress.unlockedBadgeIds) ? progress.unlockedBadgeIds : [])]));
+
+        const streakDays = Math.max(Number(existingProg?.streak_days || 1), Number(progress.streakDays || 1));
+        const longestStreak = Math.max(Number(existingProg?.longest_streak || 1), Number(progress.longestStreak || 1), streakDays);
+
         db.run(
-          `INSERT OR REPLACE INTO progress (user_id, solved_count, solved_ids, saved_code_json, bookmarks_json, notes_json, streak_days, longest_streak, last_active_date, daily_attempts_json, daily_solved_json, hourly_activity_json, unlocked_badge_ids_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO progress (user_id, solved_count, solved_ids, saved_code_json, bookmarks_json, notes_json, streak_days, longest_streak, last_active_date, daily_attempts_json, daily_solved_json, hourly_activity_json, unlocked_badge_ids_json, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             progress.userId,
-            progress.solvedProblemIds?.length || 0,
-            JSON.stringify(progress.solvedProblemIds || []),
-            JSON.stringify(progress.savedCode || {}),
-            JSON.stringify(progress.bookmarks || []),
-            JSON.stringify(progress.notes || {}),
-            progress.streakDays || 1,
-            progress.longestStreak || progress.streakDays || 1,
-            progress.lastActiveDate || new Date().toISOString().split('T')[0],
-            JSON.stringify(progress.dailyAttempts || {}),
-            JSON.stringify(progress.dailySolved || {}),
-            JSON.stringify(progress.hourlyActivity || {}),
-            JSON.stringify(progress.unlockedBadgeIds || [])
+            mergedSolved.length,
+            JSON.stringify(mergedSolved),
+            JSON.stringify(mergedSavedCode),
+            JSON.stringify(mergedBookmarks),
+            JSON.stringify(mergedNotes),
+            streakDays,
+            longestStreak,
+            progress.lastActiveDate || existingProg?.last_active_date || now.split('T')[0],
+            JSON.stringify(mergedDailyAttempts),
+            JSON.stringify(mergedDailySolved),
+            JSON.stringify(mergedHourly),
+            JSON.stringify(mergedBadges),
+            now
           ]
         );
       }
@@ -937,7 +997,7 @@ async function startServer() {
 
       const isVlsiExpertAdmin = /^vlsiexpert00[1-4]@gmail\.com$/.test(emailTrim);
       const isAuthorizedFounderOrMentor = [
-        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'mithran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'shimona'
+        'deepak', 'kumarapdeepak', 'maniraj', 'mitran', 'mithran', 'suhail', 'thiluck', 'boomika', 'basha', 'dharaanya', 'dhaarenya', 'shimona'
       ].some(k => emailTrim.includes(k));
 
       if (!isVlsiExpertAdmin && !isAuthorizedFounderOrMentor) {
@@ -951,18 +1011,48 @@ async function startServer() {
 
       const adminNum = emailTrim.match(/vlsiexpert00(\d)/)?.[1] || "1";
       const adminName = isVlsiExpertAdmin ? `VLSI Expert Admin 00${adminNum}` : emailTrim;
+      const now = new Date().toISOString();
+
+      // Ensure admin record exists in users table with role = 'admin' so /api/auth/me works across page reloads
+      const stmt = db.prepare("SELECT * FROM users WHERE LOWER(email) = ?");
+      stmt.bind([emailTrim]);
+      let userRow: any = null;
+      if (stmt.step()) {
+        userRow = stmt.getAsObject();
+      }
+      stmt.free();
+
+      const adminId = userRow ? userRow.id : `admin_${emailTrim}`;
+      if (!userRow) {
+        db.run(
+          `INSERT INTO users (id, name, email, role, department, year_of_study, college_name, selected_track, created_at, last_login)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [adminId, adminName, emailTrim, 'admin', 'ECE - VLSI Design & Technology', 'Faculty / Admin', 'PSNA College of Engineering and Technology', 'both', now, now]
+        );
+        db.run(
+          `INSERT OR IGNORE INTO progress (user_id, solved_count, solved_ids, streak_days, longest_streak, last_active_date)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [adminId, 0, '[]', 1, 1, now.split('T')[0]]
+        );
+      } else {
+        db.run("UPDATE users SET role = 'admin', last_login = ? WHERE id = ?", [now, userRow.id]);
+      }
+      saveDatabaseToFile();
+
+      const userProgress = getUserProgressFromDb(adminId);
 
       res.json({
         success: true,
         token: sessionToken,
         user: {
-          id: `admin_${emailTrim}`,
+          id: adminId,
           email: emailTrim,
-          name: adminName,
+          name: userRow?.name || adminName,
           role: "admin",
           isGuest: false,
           selectedTrack: "both"
-        }
+        },
+        progress: userProgress
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Admin login verification failed." });

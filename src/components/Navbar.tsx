@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { 
-  Flame, User, Download, Upload, PlusCircle, Network, 
+  Flame, User, Download, Upload, Network, 
   Coins, Sparkles, Sliders, Bell, ShieldCheck
 } from 'lucide-react';
 import { UserProfile, UserProgress, Track } from '../types';
@@ -173,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
               <span>Assessment</span>
             </button>
 
-            {/* Admin Panel (Visible for Admin accounts) */}
+            {/* Admin Panel (Visible ONLY for authenticated Admin accounts) */}
             {user.role === 'admin' && (
               <button
                 onClick={() => handleProtectedAction('admin')}
@@ -250,25 +250,6 @@ export const Navbar: React.FC<NavbarProps> = memo(({
               <Upload className="w-3 h-3" />
             </button>
           </div>
-
-          {/* Admin Problem Authoring or Full Admin Dashboard */}
-          <button
-            onClick={() => {
-              if (user.role === 'admin') {
-                setActiveTab('admin');
-              } else {
-                handleProtectedTool(onOpenAdmin);
-              }
-            }}
-            className="h-7 w-7 rounded-md bg-[#191a21] text-[#9e9e9e] hover:text-[#e5a93c] hover:bg-[#20222b] transition-colors border border-[#2b2d39] flex items-center justify-center cursor-pointer shrink-0"
-            title={user.role === 'admin' ? "Admin Management Dashboard" : "Admin: Create Custom Question"}
-          >
-            {user.role === 'admin' ? (
-              <ShieldCheck className="w-3.5 h-3.5 text-[#e5a93c]" />
-            ) : (
-              <PlusCircle className="w-3.5 h-3.5" />
-            )}
-          </button>
 
           {/* Profile Avatar */}
           <button

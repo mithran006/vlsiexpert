@@ -33,7 +33,7 @@ const TEAM_MEMBERS = [
   { name: 'MOHAMMED SUHAIL', designation: 'Interactive EDA Simulation & Software Stack' },
   { name: 'THILUCK', designation: 'SystemVerilog, UVM & Hardware Verification' },
   { name: 'BOOMIKA', designation: 'FPGA Architecture & Silicon Engineering' },
-  { name: 'BASHA DHARAANYA', designation: 'Digital Circuit Synthesis & Hardware Logic' },
+  { name: 'BASHA DHAARENYA', designation: 'Digital Circuit Synthesis & Hardware Logic' },
   { name: 'MARY SHIMONA', designation: 'Embedded Systems & AI Silicon Architecture' }
 ];
 

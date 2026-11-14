@@ -199,8 +199,14 @@ export const storageService = {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.user) {
+          if (data.adminToken) {
+            try {
+              sessionStorage.setItem('psnacet_admin_token', data.adminToken);
+              sessionStorage.setItem('psnacet_admin_authed', 'true');
+            } catch (e) {}
+          }
           this.saveUser(data.user);
-          if (data.progress) this.saveProgress(data.progress);
+          if (data.progress) this.saveProgress(data.progress, true);
           return { user: data.user, progress: data.progress };
         }
       }
@@ -226,6 +232,11 @@ export const storageService = {
         }).catch(() => {});
       } catch (e) {}
     }
+
+    try {
+      sessionStorage.removeItem('psnacet_admin_authed');
+      sessionStorage.removeItem('psnacet_admin_token');
+    } catch (e) {}
 
     const guestUser: UserProfile = {
       ...DEFAULT_GUEST_USER,
@@ -267,7 +278,11 @@ export const storageService = {
   },
 
   saveUser(user: UserProfile): void {
+    const isSwitchingUser = inMemoryUser && inMemoryUser.id !== user.id;
     inMemoryUser = user;
+    if (isSwitchingUser) {
+      inMemoryProgress = null;
+    }
     try {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       const prog = this.getProgress(user.id);
@@ -809,6 +824,10 @@ export const storageService = {
       const data = await res.json();
       if (!res.ok) {
         return { success: false, error: data.error || 'Admin authentication failed.' };
+      }
+      if (data.user && data.progress) {
+        this.saveUser(data.user);
+        this.saveProgress(data.progress, true);
       }
       return { success: true, token: data.token, user: data.user };
     } catch (e: any) {

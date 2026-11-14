@@ -372,12 +372,14 @@ export default function App() {
               <p className="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
                 This administrative section is strictly restricted to verified platform administrators. Please sign in with an administrator account to proceed.
               </p>
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className="px-6 py-2.5 rounded-lg bg-[#e5a93c] hover:bg-[#d99b2e] text-[#111215] font-semibold text-xs sm:text-sm shadow-sm transition-colors cursor-pointer"
-              >
-                Return to Dashboard
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-6 py-2.5 rounded-lg bg-[#e5a93c] hover:bg-[#d99b2e] text-[#111215] font-semibold text-xs sm:text-sm shadow-sm transition-colors cursor-pointer"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
             </div>
           )
         )}
@@ -441,6 +443,7 @@ export default function App() {
         onUserAuthSuccess={handleUserAuthSuccess}
         onExportDB={handleExportDB}
         onImportDB={handleImportDB}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         promptMessage={authPromptMessage}
       />
 
@@ -451,6 +454,18 @@ export default function App() {
         onUpdateProblem={handleUpdateProblem}
         onDeleteProblem={handleDeleteProblem}
         allProblems={allProblemsList}
+        onAdminLoginSuccess={(adminUser) => {
+          const updatedAdminProfile: UserProfile = {
+            ...user,
+            ...adminUser,
+            role: 'admin',
+            isGuest: false
+          };
+          storageService.saveUser(updatedAdminProfile);
+          setUser(updatedAdminProfile);
+          setIsAdminOpen(false);
+          setActiveTab('admin');
+        }}
       />
 
       <ProgressStatsModal
